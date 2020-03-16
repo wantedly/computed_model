@@ -115,6 +115,7 @@ users = User.list([1, 2, 3], with: [:name, :name_with_playing_music, :premium_us
 This library is distributed under MIT license.
 
 Copyright (c) 2020 Masaki Hara
+
 Copyright (c) 2020 Wantedly, Inc.
 
 ## Development
@@ -125,4 +126,4 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/qnighy/computed_model.
+Bug reports and pull requests are welcome on GitHub at https://github.com/wantedly/computed_model.
