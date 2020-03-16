@@ -25,6 +25,8 @@ RSpec.describe ComputedModel do
     class User
       include ComputedModel
 
+      class RawUserLoadError < StandardError; end
+
       attr_reader :id
 
       def initialize(id)
@@ -43,11 +45,11 @@ RSpec.describe ComputedModel do
         raw_users = RawUser.list(user_ids).map { |u| [u.id, u] }.to_h
         users.each do |user|
           user.raw_user = raw_users[user.id]
+          user.computed_model_error ||= RawUserLoadError.new if user.raw_user.nil?
         end
       end
 
-      # TODO: this allow_nil is weird; resolve inconsistency
-      delegate_dependency :name, to: :raw_user, allow_nil: true
+      delegate_dependency :name, to: :raw_user
 
       dependency :name
       computed def fancy_name

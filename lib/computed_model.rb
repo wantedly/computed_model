@@ -92,6 +92,7 @@ module ComputedModel
     # @param objs [Array]
     # @param deps [Array]
     def bulk_load_and_compute(objs, deps, **options)
+      objs = objs.dup
       plan = computing_plan(deps)
       plan.load_order.each do |dep_name|
         if @__computed_model_dependencies.key?(dep_name)
@@ -103,6 +104,7 @@ module ComputedModel
         else
           raise "No dependency info for #{self}##{dep_name}"
         end
+        objs.reject! { |obj| !obj.computed_model_error.nil? }
       end
     end
 
@@ -167,6 +169,8 @@ module ComputedModel
     end
     normalized
   end
+
+  attr_accessor :computed_model_error
 
   def self.included(klass)
     super
