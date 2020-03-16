@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.describe ComputedModel do
   it "has a version number" do
     expect(ComputedModel::VERSION).not_to be nil
