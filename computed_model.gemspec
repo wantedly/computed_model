@@ -20,6 +20,7 @@ Gem::Specification.new do |spec|
     ActiveRecord and remote server (such as ActiveResource).
   DSC
   spec.homepage      = "https://github.com/wantedly/computed_model"
+  spec.licenses      = ['MIT']
 
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = "https://github.com/wantedly/computed_model"

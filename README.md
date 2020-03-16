@@ -110,6 +110,13 @@ They you can retrieve users with only a specified attributes in a batch:
 users = User.list([1, 2, 3], with: [:name, :name_with_playing_music, :premium_user])
 ```
 
+## License
+
+This library is distributed under MIT license.
+
+Copyright (c) 2020 Masaki Hara
+Copyright (c) 2020 Wantedly, Inc.
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
