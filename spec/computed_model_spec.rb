@@ -25,28 +25,19 @@ RSpec.describe ComputedModel do
     class User
       include ComputedModel
 
-      class RawUserLoadError < StandardError; end
-
       attr_reader :id
 
-      def initialize(id)
-        @id = id
+      def initialize(raw_user)
+        @id = raw_user.id
+        @raw_user = raw_user
       end
 
       def self.list(ids, with:)
-        objs = ids.map { |id| User.new(id) }
-        bulk_load_and_compute(objs, Array(with) + [:raw_user])
-        objs.reject! { |u| u.raw_user.nil? }
-        objs
+        bulk_list_and_compute(Array(with) + [:raw_user], ids: ids)
       end
 
-      define_loader :raw_user do |users, _subdeps, **_options|
-        user_ids = users.map(&:id)
-        raw_users = RawUser.list(user_ids).map { |u| [u.id, u] }.to_h
-        users.each do |user|
-          user.raw_user = raw_users[user.id]
-          user.computed_model_error ||= RawUserLoadError.new if user.raw_user.nil?
-        end
+      define_primary_loader :raw_user do |_subdeps, ids:, **_options|
+        RawUser.list(ids).map { |raw_user| User.new(raw_user) }
       end
 
       delegate_dependency :name, to: :raw_user

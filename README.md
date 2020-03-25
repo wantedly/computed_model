@@ -42,24 +42,57 @@ end
 They your model class will be able to define the two kinds of special attributes:
 
 - **Loaded attributes** for external data. You define batch loading strategies for loaded attributes.
+  - Among them, there is a special **primary model** for listing up the models from certain criteria.
 - **Computed attributes** for data derived from loaded attributes or other computed attributes.
   You define a usual `def` with special dependency annotations.
 
 ## Loaded attributes
 
-Use `ComputedModel::ClassMethods#define_loader` to define loaded attributes.
+Use `ComputedModel::ClassMethods#define_primary_loader`
+or `ComputedModel::ClassMethods#define_loader` to define loaded attributes.
 
 ```ruby
+# Create a User instance
+def initialize(raw_user)
+  @id = raw_user.id
+  @raw_user = raw_user
+end
+
 # Example: pulling data from ActiveRecord
-define_loader :raw_user do |users, subdeps, **options|
+define_primary_loader :raw_user do |subdeps, ids:, **options|
+  RawUser.where(id: ids).preload(subdeps).map { |raw_user| User.new(raw_user) }
+end
+
+# Example: pulling auxiliary data from ActiveRecord
+define_loader :user_aux_data do |users, subdeps, **options|
   user_ids = users.map(&:id)
-  raw_users = RawUser.where(id: user_ids).preload(subdeps).index_by(&:id)
+  user_aux_data = UserAuxData.where(user_id: user_ids).preload(subdeps).group_by(&:id)
   users.each do |user|
-    # Even if it doesn't exist, you must explicitly assign nil to the field.
-    user.raw_user = raw_users[user.id]
+    user.user_aux_data = user_aux_data[user.id]
   end
 end
 ```
+
+### `define_primary_loader`
+
+At most one primary loader can be defined on a model class.
+
+The primary loader's job is to list up models from user-defined criteria, along with
+requested data loaded to the primary attribute.
+
+Search criteria can be passed as a keyword argument to `bulk_list_and_compute`
+and it will be passed to the loader as-is.
+
+Most typically you receive `ids`, an array of integers, and use it like
+`.where(id: ids)`. Instead you may want to accept a non-primary-key criterion
+such as `group_ids` and `.where(group_id: group_ids)`.
+
+The loader must return an array of instances of the model being defined.
+Each instance must have the primary attribute assigned at that time.
+In the example above, the block for `define_primary_loader :raw_user`
+must return an array of `User`s, each of which already have `@raw_user`.
+
+### `define_loader`
 
 The first argument to the block is an array of the model instances.
 The loader's job is to assign something to the corresponding field of each instance.
@@ -88,19 +121,13 @@ end
 
 ## Batch loading
 
-Once you defined loaded and computed attributes, you can batch-load them using `ComputedModel::ClassMethods#bulk_load_and_compute`.
+Once you defined loaded and computed attributes, you can batch-load them using `ComputedModel::ClassMethods#bulk_list_and_compute`.
 
 Typically you need to create a wrapper for the batch loader like:
 
 ```ruby
 def self.list(ids, with:)
-  # Create placeholder objects.
-  objs = ids.map { |id| User.new(id) }
-  # Batch-load attributes into the objects.
-  bulk_load_and_compute(objs, Array(with) + [:raw_user])
-  # Reject objects without primary model.
-  objs.reject! { |u| u.raw_user.nil? }
-  objs
+  bulk_list_and_compute(Array(with) + [:raw_user], ids: ids)
 end
 ```
 

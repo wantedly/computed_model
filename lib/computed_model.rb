@@ -136,7 +136,7 @@ module ComputedModel
       end
     end
 
-    # Declares a loaded attribute. See {#dependency} too.
+    # Declares a loaded attribute. See {#dependency} and {#define_primary_loader} too.
     #
     # `define_loader :foo do ... end` generates a reader `foo` and a writer `foo=`.
     # The writer is only meant to be used in the loader.
@@ -174,14 +174,61 @@ module ComputedModel
       attr_writer meth_name
     end
 
+    # Declares a primary attribute. See {#define_loader} and {#dependency} too.
+    #
+    # `define_primary_loader :foo do ... end` generates a reader `foo` and
+    # a writer `foo=`.
+    # The writer is only meant to be used in the loader.
+    #
+    # The responsibility of the primary loader is to list up all the relevant
+    # primary models, and initialize instances of the subclass of ComputedModel
+    # with `@foo` set to the primary model which is just being found.
+    #
+    # @param meth_name [Symbol] the name of the loaded attribute.
+    # @return [void]
+    # @yield [**options]
+    # @yieldparam options [Hash] A verbatim copy of what is passed to {#bulk_load_and_compute}.
+    # @yieldreturn [void]
+    #
+    # @example define a loader for ActiveRecord-based models
+    #   define_loader :raw_user do |users, subdeps, **options|
+    #     user_ids = users.map(&:id)
+    #     raw_users = RawUser.where(id: user_ids).preload(subdeps).index_by(&:id)
+    #     users.each do |user|
+    #       # Even if it doesn't exist, you must explicitly assign nil to the field.
+    #       user.raw_user = raw_users[user.id]
+    #     end
+    #   end
+    def define_primary_loader(meth_name, &block)
+      raise ArgumentError, "No block given" unless block
+      raise ArgumentError, "Primary loader has already been defined" if @__computed_model_primary_attribute
+
+      var_name = :"@#{meth_name}"
+
+      @__computed_model_primary_loader = block
+      @__computed_model_primary_attribute = meth_name
+
+      define_method(meth_name) do
+        raise NotLoaded, "the field #{meth_name} is not loaded" unless instance_variable_defined?(var_name)
+        instance_variable_get(var_name)
+      end
+      attr_writer meth_name
+    end
+
     # The core routine for batch-loading.
     #
+    # @deprecated Use {#bulk_list_and_compute} instead.
     # @param objs [Array] The objects to preload attributes into.
     # @param deps [Array<Symbol, Hash{Symbol=>Array}>] A set of dependencies.
     # @param options [Hash] An arbitrary hash to pass to loaders
     #   defined by {#define_loader}.
     # @return [void]
     def bulk_load_and_compute(objs, deps, **options)
+      warn(<<~MSG, uplevel: 1)
+        ComputedModel::ClassMethods#bulk_load_and_compute is deprecated.
+        Use ComputedModel::ClassMethods#bulk_list_and_compute instead.
+      MSG
+
       objs = objs.dup
       plan = computing_plan(deps)
       plan.load_order.each do |dep_name|
@@ -191,11 +238,49 @@ module ComputedModel
           end
         elsif @__computed_model_loaders.key?(dep_name)
           @__computed_model_loaders[dep_name].call(objs, plan.subdeps_hash[dep_name], **options)
+        elsif @__computed_model_primary_attribute == dep_name
+          raise "bulk_load_and_compute cannot handle a primary loader."
         else
           raise "No dependency info for #{self}##{dep_name}"
         end
         objs.reject! { |obj| !obj.computed_model_error.nil? }
       end
+    end
+
+    # The core routine for batch-loading.
+    #
+    # @param deps [Array<Symbol, Hash{Symbol=>Array}>] A set of dependencies.
+    # @param options [Hash] An arbitrary hash to pass to loaders
+    #   defined by {#define_loader}.
+    # @return [void]
+    def bulk_list_and_compute(deps, **options)
+      unless @__computed_model_primary_attribute
+        raise ArgumentError, "No primary loader defined"
+      end
+
+      objs = orig_objs = nil
+      plan = computing_plan(deps)
+      plan.load_order.each do |dep_name|
+        if @__computed_model_primary_attribute == dep_name
+          orig_objs = @__computed_model_primary_loader.call(plan.subdeps_hash[dep_name], **options)
+          objs = orig_objs.dup
+        elsif @__computed_model_dependencies.key?(dep_name)
+          raise "Bug: objs is nil" if objs.nil?
+
+          objs.each do |obj|
+            obj.send(:"compute_#{dep_name}")
+          end
+        elsif @__computed_model_loaders.key?(dep_name)
+          raise "Bug: objs is nil" if objs.nil?
+
+          @__computed_model_loaders[dep_name].call(objs, plan.subdeps_hash[dep_name], **options)
+        else
+          raise "No dependency info for #{self}##{dep_name}"
+        end
+        objs.reject! { |obj| !obj.computed_model_error.nil? }
+      end
+
+      orig_objs
     end
 
     # @param deps [Array]
@@ -206,6 +291,12 @@ module ComputedModel
       subdeps_hash = {}
       visiting = Set[]
       visited = Set[]
+      if @__computed_model_primary_attribute
+        load_order << @__computed_model_primary_attribute
+        visiting.add @__computed_model_primary_attribute
+        visited.add @__computed_model_primary_attribute
+        subdeps_hash[@__computed_model_primary_attribute] ||= []
+      end
       normalized.each do |dep_name, dep_subdeps|
         computing_plan_dfs(dep_name, dep_subdeps, load_order, subdeps_hash, visiting, visited)
       end
@@ -271,5 +362,7 @@ module ComputedModel
     klass.extend ClassMethods
     klass.instance_variable_set(:@__computed_model_dependencies, {})
     klass.instance_variable_set(:@__computed_model_loaders, {})
+    klass.instance_variable_set(:@__computed_model_primary_loader, nil)
+    klass.instance_variable_set(:@__computed_model_primary_attribute, nil)
   end
 end
