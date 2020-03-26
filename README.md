@@ -76,7 +76,7 @@ At most one primary loader can be defined on a model class.
 The primary loader's job is to list up models from user-defined criteria, along with
 requested data loaded to the primary attribute.
 
-Search criteria can be passed as a keyword argument to `bulk_list_and_compute`
+Search criteria can be passed as a keyword argument to `bulk_load_and_compute`
 and it will be passed to the loader as-is.
 
 Most typically you receive `ids`, an array of integers, and use it like
@@ -98,7 +98,7 @@ The value of `subdeps` is an array, but further details are up to you
 (it's just a verbatim copy of what you pass to `ComputedModel::ClassMethods#dependency`).
 It's customary to take something ActiveRecord's `preload` accepts.
 
-The keyword arguments are also a verbatim copy of what you pass to `ComputedModel::ClassMethods#bulk_list_and_compute`.
+The keyword arguments are also a verbatim copy of what you pass to `ComputedModel::ClassMethods#bulk_load_and_compute`.
 
 ## Computed attributes
 
@@ -117,13 +117,13 @@ end
 
 ## Batch loading
 
-Once you defined loaded and computed attributes, you can batch-load them using `ComputedModel::ClassMethods#bulk_list_and_compute`.
+Once you defined loaded and computed attributes, you can batch-load them using `ComputedModel::ClassMethods#bulk_load_and_compute`.
 
 Typically you need to create a wrapper for the batch loader like:
 
 ```ruby
 def self.list(ids, with:)
-  bulk_list_and_compute(Array(with), ids: ids)
+  bulk_load_and_compute(Array(with), ids: ids)
 end
 ```
 

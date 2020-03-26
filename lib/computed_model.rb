@@ -223,7 +223,7 @@ module ComputedModel
     # @param options [Hash] An arbitrary hash to pass to loaders
     #   defined by {#define_loader}.
     # @return [void]
-    def bulk_list_and_compute(deps, **options)
+    def bulk_load_and_compute(deps, **options)
       unless @__computed_model_primary_attribute
         raise ArgumentError, "No primary loader defined"
       end

@@ -57,7 +57,7 @@ RSpec.describe ComputedModel do
       end
 
       def self.list(ids, with:)
-        bulk_list_and_compute(Array(with), ids: ids)
+        bulk_load_and_compute(Array(with), ids: ids)
       end
 
       define_primary_loader :raw_user do |_subdeps, ids:, **_options|
