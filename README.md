@@ -139,6 +139,8 @@ This library is distributed under MIT license.
 
 Copyright (c) 2020 Masaki Hara
 
+Copyright (c) 2020 Masayuki Izumi
+
 Copyright (c) 2020 Wantedly, Inc.
 
 ## Development

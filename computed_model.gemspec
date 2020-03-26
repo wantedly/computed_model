@@ -7,8 +7,8 @@ require "computed_model/version"
 Gem::Specification.new do |spec|
   spec.name          = "computed_model"
   spec.version       = ComputedModel::VERSION
-  spec.authors       = ["Masaki Hara", "Wantedly, Inc."]
-  spec.email         = ["ackie.h.gmai@gmail.com", "dev@wantedly.com"]
+  spec.authors       = ["Masaki Hara", "Masayuki Izumi", "Wantedly, Inc."]
+  spec.email         = ["ackie.h.gmai@gmail.com", "m@izum.in", "dev@wantedly.com"]
 
   spec.summary       = %q{Batch loader with dependency resolution and computed fields}
   spec.description   = <<~DSC
