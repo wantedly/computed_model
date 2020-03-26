@@ -1,4 +1,7 @@
 ## Unreleased
+
+## 0.2.0
+
 - **BREAKING CHANGE** Make define_loader more concise interface like GraphQL's DataLoader.
 - Introduce primary loader through `#define_primary_loader`.
 - **BREAKING CHANGE** Change `#bulk_load_and_compute` signature to support primary loader.
