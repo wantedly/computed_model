@@ -222,7 +222,8 @@ module ComputedModel
     # @param deps [Array<Symbol, Hash{Symbol=>Array}>] A set of dependencies.
     # @param options [Hash] An arbitrary hash to pass to loaders
     #   defined by {#define_loader}.
-    # @return [void]
+    # @return [Array<Object>] The array of the requested models.
+    #   Based on what the primary loader returns.
     def bulk_load_and_compute(deps, **options)
       unless @__computed_model_primary_attribute
         raise ArgumentError, "No primary loader defined"
