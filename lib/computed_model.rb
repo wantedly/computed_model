@@ -242,8 +242,8 @@ module ComputedModel
           l = @__computed_model_loaders[dep_name]
           keys = objs.map { |o| o.instance_exec(&(l.key_proc)) }
           subobj_by_key = l.load_proc.call(keys, plan.subdeps_hash[dep_name], **options)
-          objs.each.with_index do |obj, i|
-            obj.send(:"#{dep_name}=", subobj_by_key[keys[i]])
+          objs.zip(keys) do |obj, key|
+            obj.send(:"#{dep_name}=", subobj_by_key[key])
           end
         elsif @__computed_model_primary_attribute == dep_name
           raise "bulk_load_and_compute cannot handle a primary loader."
@@ -283,8 +283,8 @@ module ComputedModel
           l = @__computed_model_loaders[dep_name]
           keys = objs.map { |o| o.instance_exec(&(l.key_proc)) }
           subobj_by_key = l.load_proc.call(keys, plan.subdeps_hash[dep_name], **options)
-          objs.each.with_index do |obj, i|
-            obj.send(:"#{dep_name}=", subobj_by_key[keys[i]])
+          objs.zip(keys) do |obj, key|
+            obj.send(:"#{dep_name}=", subobj_by_key[key])
           end
         else
           raise "No dependency info for #{self}##{dep_name}"
