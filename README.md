@@ -123,7 +123,7 @@ Typically you need to create a wrapper for the batch loader like:
 
 ```ruby
 def self.list(ids, with:)
-  bulk_list_and_compute(Array(with) + [:raw_user], ids: ids)
+  bulk_list_and_compute(Array(with), ids: ids)
 end
 ```
 
