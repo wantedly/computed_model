@@ -65,8 +65,7 @@ RSpec.describe ComputedModel do
       end
 
       define_loader :books, key: -> { id } do |keys, _subdeps|
-        books = Book.list(user_ids: keys).group_by(&:author_id)
-        keys.map { |key| books[key] || [] }
+        Book.list(user_ids: keys).group_by(&:author_id)
       end
 
       delegate_dependency :name, to: :raw_user
@@ -78,7 +77,7 @@ RSpec.describe ComputedModel do
 
       dependency :books
       computed def book_count
-        books.size
+        (books || []).size
       end
     end
   end

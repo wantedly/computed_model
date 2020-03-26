@@ -156,12 +156,11 @@ module ComputedModel
     # @yieldparam objects [Array] The ids of the loaded attributes.
     # @yieldparam subdeps [Hash] sub-dependencies
     # @yieldparam options [Hash] A verbatim copy of what is passed to {#bulk_load_and_compute}.
-    # @yieldreturn [Array]
+    # @yieldreturn [Hash]
     #
     # @example define a loader for ActiveRecord-based models
-    #   define_loader :books, key: -> { id } do |keys, subdeps, **options|
-    #     books = Book.where(user_id: keys).preload(subdeps).index_by(&:author_id)
-    #     keys.map { |key| books[key] || [] }
+    #   define_loader :user_aux_data, key: -> { id } do |user_ids, subdeps, **options|
+    #     UserAuxData.where(user_id: user_ids).preload(subdeps).group_by(&:id)
     #   end
     def define_loader(meth_name, key:, &block)
       raise ArgumentError, "No block given" unless block
@@ -242,8 +241,9 @@ module ComputedModel
         elsif @__computed_model_loaders.key?(dep_name)
           l = @__computed_model_loaders[dep_name]
           keys = objs.map { |o| o.instance_exec(&(l.key_proc)) }
-          l.load_proc.call(keys, plan.subdeps_hash[dep_name], **options).each.with_index do |subobj, i|
-            objs[i].send(:"#{dep_name}=", subobj)
+          subobj_by_key = l.load_proc.call(keys, plan.subdeps_hash[dep_name], **options)
+          objs.each.with_index do |obj, i|
+            obj.send(:"#{dep_name}=", subobj_by_key[keys[i]])
           end
         elsif @__computed_model_primary_attribute == dep_name
           raise "bulk_load_and_compute cannot handle a primary loader."
@@ -282,8 +282,9 @@ module ComputedModel
 
           l = @__computed_model_loaders[dep_name]
           keys = objs.map { |o| o.instance_exec(&(l.key_proc)) }
-          l.load_proc.call(keys, plan.subdeps_hash[dep_name], **options).each.with_index do |subobj, i|
-            objs[i].send(:"#{dep_name}=", subobj)
+          subobj_by_key = l.load_proc.call(keys, plan.subdeps_hash[dep_name], **options)
+          objs.each.with_index do |obj, i|
+            obj.send(:"#{dep_name}=", subobj_by_key[keys[i]])
           end
         else
           raise "No dependency info for #{self}##{dep_name}"
