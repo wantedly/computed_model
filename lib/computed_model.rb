@@ -219,43 +219,6 @@ module ComputedModel
 
     # The core routine for batch-loading.
     #
-    # @deprecated Use {#bulk_list_and_compute} instead.
-    # @param objs [Array] The objects to preload attributes into.
-    # @param deps [Array<Symbol, Hash{Symbol=>Array}>] A set of dependencies.
-    # @param options [Hash] An arbitrary hash to pass to loaders
-    #   defined by {#define_loader}.
-    # @return [void]
-    def bulk_load_and_compute(objs, deps, **options)
-      warn(<<~MSG, uplevel: 1)
-        ComputedModel::ClassMethods#bulk_load_and_compute is deprecated.
-        Use ComputedModel::ClassMethods#bulk_list_and_compute instead.
-      MSG
-
-      objs = objs.dup
-      plan = computing_plan(deps)
-      plan.load_order.each do |dep_name|
-        if @__computed_model_dependencies.key?(dep_name)
-          objs.each do |obj|
-            obj.send(:"compute_#{dep_name}")
-          end
-        elsif @__computed_model_loaders.key?(dep_name)
-          l = @__computed_model_loaders[dep_name]
-          keys = objs.map { |o| o.instance_exec(&(l.key_proc)) }
-          subobj_by_key = l.load_proc.call(keys, plan.subdeps_hash[dep_name], **options)
-          objs.zip(keys) do |obj, key|
-            obj.send(:"#{dep_name}=", subobj_by_key[key])
-          end
-        elsif @__computed_model_primary_attribute == dep_name
-          raise "bulk_load_and_compute cannot handle a primary loader."
-        else
-          raise "No dependency info for #{self}##{dep_name}"
-        end
-        objs.reject! { |obj| !obj.computed_model_error.nil? }
-      end
-    end
-
-    # The core routine for batch-loading.
-    #
     # @param deps [Array<Symbol, Hash{Symbol=>Array}>] A set of dependencies.
     # @param options [Hash] An arbitrary hash to pass to loaders
     #   defined by {#define_loader}.

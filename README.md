@@ -98,7 +98,7 @@ The value of `subdeps` is an array, but further details are up to you
 (it's just a verbatim copy of what you pass to `ComputedModel::ClassMethods#dependency`).
 It's customary to take something ActiveRecord's `preload` accepts.
 
-The keyword arguments are also a verbatim copy of what you pass to `ComputedModel::ClassMethods#bulk_load_and_compute`.
+The keyword arguments are also a verbatim copy of what you pass to `ComputedModel::ClassMethods#bulk_list_and_compute`.
 
 ## Computed attributes
 
