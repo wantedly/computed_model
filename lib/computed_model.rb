@@ -30,6 +30,8 @@ module ComputedModel
   # An object for storing procs for loaded attributes.
   Loader = Struct.new(:key_proc, :load_proc)
 
+  private_constant :Loader
+
   # A set of class methods for {ComputedModel}. Automatically included to the
   # singleton class when you include {ComputedModel}.
   module ClassMethods
