@@ -27,7 +27,7 @@ module ComputedModel
   # A return value from {ComputedModel::ClassMethods#computing_plan}.
   Plan = Struct.new(:load_order, :subdeps_hash)
 
-  # A object for storing procs for loaded attributes.
+  # An object for storing procs for loaded attributes.
   Loader = Struct.new(:key_proc, :load_proc)
 
   # A set of class methods for {ComputedModel}. Automatically included to the
