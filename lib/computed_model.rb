@@ -27,6 +27,9 @@ module ComputedModel
   # A return value from {ComputedModel::ClassMethods#computing_plan}.
   Plan = Struct.new(:load_order, :subdeps_hash)
 
+  # A object for storing procs for loaded attributes.
+  Loader = Struct.new(:key_proc, :load_proc)
+
   # A set of class methods for {ComputedModel}. Automatically included to the
   # singleton class when you include {ComputedModel}.
   module ClassMethods
@@ -145,27 +148,25 @@ module ComputedModel
     # or set `computed_model_error` otherwise.
     #
     # @param meth_name [Symbol] the name of the loaded attribute.
+    # @param key [Proc] The proc to collect keys.
     # @return [void]
-    # @yield [objects, **options]
-    # @yieldparam objects [Array] The objects to preload the attribute into.
+    # @yield [keys, subdeps, **options]
+    # @yieldparam objects [Array] The ids of the loaded attributes.
+    # @yieldparam subdeps [Hash] sub-dependencies
     # @yieldparam options [Hash] A verbatim copy of what is passed to {#bulk_load_and_compute}.
-    # @yieldreturn [void]
+    # @yieldreturn [Array]
     #
     # @example define a loader for ActiveRecord-based models
-    #   define_loader :raw_user do |users, subdeps, **options|
-    #     user_ids = users.map(&:id)
-    #     raw_users = RawUser.where(id: user_ids).preload(subdeps).index_by(&:id)
-    #     users.each do |user|
-    #       # Even if it doesn't exist, you must explicitly assign nil to the field.
-    #       user.raw_user = raw_users[user.id]
-    #     end
+    #   define_loader :books, key: -> { id } do |keys, subdeps, **options|
+    #     books = Book.where(user_id: keys).preload(subdeps).index_by(&:author_id)
+    #     keys.map { |key| books[key] || [] }
     #   end
-    def define_loader(meth_name, &block)
+    def define_loader(meth_name, key:, &block)
       raise ArgumentError, "No block given" unless block
 
       var_name = :"@#{meth_name}"
 
-      @__computed_model_loaders[meth_name] = block
+      @__computed_model_loaders[meth_name] = Loader.new(key, block)
 
       define_method(meth_name) do
         raise NotLoaded, "the field #{meth_name} is not loaded" unless instance_variable_defined?(var_name)
@@ -237,7 +238,11 @@ module ComputedModel
             obj.send(:"compute_#{dep_name}")
           end
         elsif @__computed_model_loaders.key?(dep_name)
-          @__computed_model_loaders[dep_name].call(objs, plan.subdeps_hash[dep_name], **options)
+          l = @__computed_model_loaders[dep_name]
+          keys = objs.map { |o| o.instance_exec(&(l.key_proc)) }
+          l.load_proc.call(keys, plan.subdeps_hash[dep_name], **options).each.with_index do |subobj, i|
+            objs[i].send(:"#{dep_name}=", subobj)
+          end
         elsif @__computed_model_primary_attribute == dep_name
           raise "bulk_load_and_compute cannot handle a primary loader."
         else
@@ -273,7 +278,11 @@ module ComputedModel
         elsif @__computed_model_loaders.key?(dep_name)
           raise "Bug: objs is nil" if objs.nil?
 
-          @__computed_model_loaders[dep_name].call(objs, plan.subdeps_hash[dep_name], **options)
+          l = @__computed_model_loaders[dep_name]
+          keys = objs.map { |o| o.instance_exec(&(l.key_proc)) }
+          l.load_proc.call(keys, plan.subdeps_hash[dep_name], **options).each.with_index do |subobj, i|
+            objs[i].send(:"#{dep_name}=", subobj)
+          end
         else
           raise "No dependency info for #{self}##{dep_name}"
         end

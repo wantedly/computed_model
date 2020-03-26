@@ -1,5 +1,5 @@
 ## Unreleased
-
+- **BREAKING CHANGE** Introduce GraphQL's DataLoader-like interface.
 - Introduce primary loader through `#define_primary_loader`.
 - Deprecate `#bulk_load_and_compute` in favor of `#bulk_list_and_compute`.
 

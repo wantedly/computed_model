@@ -64,12 +64,9 @@ define_primary_loader :raw_user do |subdeps, ids:, **options|
 end
 
 # Example: pulling auxiliary data from ActiveRecord
-define_loader :user_aux_data do |users, subdeps, **options|
-  user_ids = users.map(&:id)
+define_loader :user_aux_data, key: -> { id } do |keys, subdeps, **options|
   user_aux_data = UserAuxData.where(user_id: user_ids).preload(subdeps).group_by(&:id)
-  users.each do |user|
-    user.user_aux_data = user_aux_data[user.id]
-  end
+  keys.map { |id| user_aux_data[id] }
 end
 ```
 
