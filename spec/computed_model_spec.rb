@@ -22,6 +22,30 @@ RSpec.describe ComputedModel do
       ].map { |user| [user.id, user] }.to_h
     end
 
+    class Book
+      attr_accessor :id
+      attr_accessor :author_id
+      attr_accessor :title
+
+      def initialize(id:, author_id:, title:)
+        @id = id
+        @author_id = author_id
+        @title = title
+      end
+
+      def self.list(user_ids:)
+        id_set = user_ids.to_set
+        BOOKS.select { |b| id_set.include? b.author_id }
+      end
+
+      BOOKS = [
+        Book.new(id: 1, author_id: 2, title: 'Bool One'),
+        Book.new(id: 2, author_id: 4, title: 'Bool Two'),
+        Book.new(id: 3, author_id: 2, title: 'Bool Three'),
+        Book.new(id: 4, author_id: 2, title: 'Bool Four'),
+      ].freeze
+    end
+
     class User
       include ComputedModel
 
@@ -40,11 +64,20 @@ RSpec.describe ComputedModel do
         RawUser.list(ids).map { |raw_user| User.new(raw_user) }
       end
 
+      define_loader :books, key: -> { id } do |keys, _subdeps|
+        Book.list(user_ids: keys).group_by(&:author_id)
+      end
+
       delegate_dependency :name, to: :raw_user
 
       dependency :name
       computed def fancy_name
         "#{name}-san"
+      end
+
+      dependency :books
+      computed def book_count
+        (books || []).size
       end
     end
   end
@@ -101,6 +134,15 @@ RSpec.describe ComputedModel do
     it "fetches fancy_name" do
       expect(users.size).to eq(3)
       expect(users.map { |u| u.fancy_name}).to contain_exactly("User One-san", "User Two-san", "User Four-san")
+    end
+  end
+
+  context "when fetched with book_count" do
+    let(:users) { self.class::Sandbox::User.list([1, 2, 3, 4], with: [:book_count]) }
+
+    it "fetches book_count" do
+      expect(users.size).to eq(3)
+      expect(users.map { |u| u.book_count }).to contain_exactly(0, 3, 1)
     end
   end
 end
