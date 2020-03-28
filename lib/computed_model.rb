@@ -120,7 +120,7 @@ module ComputedModel
     # @example delegate name from raw_user, but expose as user_name
     #   delegate_dependency :name, to: :raw_user, prefix: :user
     def delegate_dependency(*methods, to:, allow_nil: nil, prefix: nil, include_subdeps: nil)
-      method_prefix = prefix ? "#{prefix_}" : ""
+      method_prefix = prefix ? "#{prefix}_" : ""
       methods.each do |meth_name|
         pmeth_name = :"#{method_prefix}#{meth_name}"
         if include_subdeps
