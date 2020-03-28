@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.2.1
+
 - Fix problem with `prefix` option in `delegate_dependency` not working
 
 ## 0.2.0
