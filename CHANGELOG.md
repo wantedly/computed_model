@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Fix problem with `prefix` option in `delegate_dependency` not working
+
 ## 0.2.0
 
 - **BREAKING CHANGE** Make define_loader more concise interface like GraphQL's DataLoader.
