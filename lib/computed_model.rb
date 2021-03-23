@@ -311,18 +311,27 @@ module ComputedModel
   # @return [Hash{Symbol=>Array}]
   def self.normalize_dependencies(deps)
     normalized = {}
-    deps.each do |elem|
-      case elem
-      when Symbol
-        normalized[elem] ||= []
-      when Hash
-        elem.each do |k, v|
-          v = [v] if v.is_a?(Hash)
-          normalized[k] ||= []
-          normalized[k].push(*Array(v))
+    case deps
+    when Array
+      deps.each do |elem|
+        case elem
+        when Symbol
+          normalized[elem] ||= []
+        when Hash
+          elem.each do |k, v|
+            v = [v] if v.is_a?(Hash)
+            normalized[k] ||= []
+            normalized[k].push(*Array(v))
+          end
+        else; raise "Invalid dependency: #{elem.inspect}"
         end
-      else; raise "Invalid dependency: #{elem.inspect}"
       end
+    when Hash
+      deps.each do |key, elem|
+        normalized[key] ||= []
+        normalized[key].push(*Array(elem))
+      end
+    else; raise "Invalid dependency: #{elem.inspect}"
     end
     normalized
   end
