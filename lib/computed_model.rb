@@ -307,37 +307,25 @@ module ComputedModel
     end
   end
 
-  class << self
-    # @param deps [Array<Symbol, Hash>, Hash]
-    # @return [Hash{Symbol=>Array}]
-    def normalize_dependencies(deps)
-      normalized = {}
-      case deps
-      when Array
-        deps.each do |elem|
-          case elem
-          when Symbol
-            normalized[elem] ||= []
-          when Hash
-            normalized.merge!(normalize_dependencies_hash(elem))
-          else; raise "Invalid dependency: #{elem.inspect}"
-          end
-        end
+  # @param deps [Array<Symbol, Hash>, Hash]
+  # @return [Hash{Symbol=>Array}]
+  def self.normalize_dependencies(deps)
+    normalized = {}
+    deps = [deps] if deps.is_a?(Hash)
+    Array(deps).each do |elem|
+      case elem
+      when Symbol
+        normalized[elem] ||= []
       when Hash
-        normalized.merge!(normalize_dependencies_hash(deps))
+        elem.each do |key, value|
+          value = [value] if value.is_a?(Hash)
+          normalized[key] ||= []
+          normalized[key].push(*Array(value))
+        end
       else; raise "Invalid dependency: #{elem.inspect}"
       end
-      normalized
     end
-
-    # @param deps [Hash]
-    # @return [Hash{Symbol=>Array}]
-    private def normalize_dependencies_hash(hash_deps)
-      hash_deps.each_with_object({}) do |(key, elem), normalized|
-        normalized[key] ||= []
-        normalized[key].push(*Array(elem))
-      end
-    end
+    normalized
   end
 
   # An error field to prevent {ComputedModel::ClassMethods#bulk_load_and_compute}
