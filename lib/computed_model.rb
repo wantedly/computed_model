@@ -307,7 +307,7 @@ module ComputedModel
     end
   end
 
-  # @param deps [Array<Symbol, Hash>, Hash]
+  # @param deps [Array<(Symbol, Hash)>, Hash, Symbol]
   # @return [Hash{Symbol=>Array}]
   def self.normalize_dependencies(deps)
     normalized = {}
