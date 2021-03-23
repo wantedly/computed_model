@@ -307,33 +307,37 @@ module ComputedModel
     end
   end
 
-  # @param deps [Array<Symbol, Hash>]
-  # @return [Hash{Symbol=>Array}]
-  def self.normalize_dependencies(deps)
-    normalized = {}
-    case deps
-    when Array
-      deps.each do |elem|
-        case elem
-        when Symbol
-          normalized[elem] ||= []
-        when Hash
-          elem.each do |k, v|
-            v = [v] if v.is_a?(Hash)
-            normalized[k] ||= []
-            normalized[k].push(*Array(v))
+  class << self
+    # @param deps [Array<Symbol, Hash>, Hash]
+    # @return [Hash{Symbol=>Array}]
+    def normalize_dependencies(deps)
+      normalized = {}
+      case deps
+      when Array
+        deps.each do |elem|
+          case elem
+          when Symbol
+            normalized[elem] ||= []
+          when Hash
+            normalized.merge!(normalize_dependencies_hash(elem))
+          else; raise "Invalid dependency: #{elem.inspect}"
           end
-        else; raise "Invalid dependency: #{elem.inspect}"
         end
+      when Hash
+        normalized.merge!(normalize_dependencies_hash(deps))
+      else; raise "Invalid dependency: #{elem.inspect}"
       end
-    when Hash
-      deps.each do |key, elem|
+      normalized
+    end
+
+    # @param deps [Hash]
+    # @return [Hash{Symbol=>Array}]
+    private def normalize_dependencies_hash(hash_deps)
+      hash_deps.each_with_object({}) do |(key, elem), normalized|
         normalized[key] ||= []
         normalized[key].push(*Array(elem))
       end
-    else; raise "Invalid dependency: #{elem.inspect}"
     end
-    normalized
   end
 
   # An error field to prevent {ComputedModel::ClassMethods#bulk_load_and_compute}
