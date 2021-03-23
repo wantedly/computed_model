@@ -317,10 +317,10 @@ module ComputedModel
       when Symbol
         normalized[elem] ||= []
       when Hash
-        elem.each do |key, value|
-          value = [value] if value.is_a?(Hash)
-          normalized[key] ||= []
-          normalized[key].push(*Array(value))
+        elem.each do |k, v|
+          v = [v] if v.is_a?(Hash)
+          normalized[k] ||= []
+          normalized[k].push(*Array(v))
         end
       else; raise "Invalid dependency: #{elem.inspect}"
       end
