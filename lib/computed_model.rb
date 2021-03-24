@@ -307,11 +307,12 @@ module ComputedModel
     end
   end
 
-  # @param deps [Array<Symbol, Hash>]
+  # @param deps [Array<(Symbol, Hash)>, Hash, Symbol]
   # @return [Hash{Symbol=>Array}]
   def self.normalize_dependencies(deps)
     normalized = {}
-    deps.each do |elem|
+    deps = [deps] if deps.is_a?(Hash)
+    Array(deps).each do |elem|
       case elem
       when Symbol
         normalized[elem] ||= []

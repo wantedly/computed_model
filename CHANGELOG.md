@@ -1,5 +1,7 @@
 ## Unreleased
 
+- [#7](https://github.com/wantedly/computed_model/pull/7) Make `with` param support hash
+
 ## 0.2.1
 
 - Fix problem with `prefix` option in `delegate_dependency` not working
