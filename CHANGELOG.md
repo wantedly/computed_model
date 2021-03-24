@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.2.2
+
 - [#7](https://github.com/wantedly/computed_model/pull/7) Make `with` param support hash
 
 ## 0.2.1
