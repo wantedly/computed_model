@@ -12,7 +12,7 @@ ActiveRecord and remote server (such as ActiveResource).
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'computed_model', '~> 0.2.1'
+gem 'computed_model', '~> 0.2.2'
 ```
 
 And then execute:
