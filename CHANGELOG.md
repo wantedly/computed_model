@@ -2,7 +2,7 @@
 
 ## 0.2.2
 
-- [#7](https://github.com/wantedly/computed_model/pull/7) Make `with` param support hash
+- [#7](https://github.com/wantedly/computed_model/pull/7) Accept Hash as a `with` parameter
 
 ## 0.2.1
 
