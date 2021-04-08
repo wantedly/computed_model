@@ -104,10 +104,6 @@ RSpec.describe ComputedModel do
     end
   end
 
-  it "has a version number" do
-    expect(ComputedModel::VERSION).not_to be nil
-  end
-
   context "when fetched with raw_user" do
     let(:users) { self.class::Sandbox::User.list([1, 2, 3, 4], with: [:raw_user]) }
     it "fetches raw_user.name" do
