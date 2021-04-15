@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Refactor tests https://github.com/wantedly/computed_model/pull/10
+
 ## 0.2.2
 
 - [#7](https://github.com/wantedly/computed_model/pull/7) Accept Hash as a `with` parameter
