@@ -1,51 +1,23 @@
 # frozen_string_literal: true
 
+require 'spec_helper'
+require 'support/models/raw_user'
+require 'support/models/raw_book'
+
 RSpec.describe ComputedModel do
+  let!(:raw_user1) { create(:raw_user, name: "User One") }
+  let!(:raw_user2) { create(:raw_user, name: "User Two") }
+  let!(:raw_user3) { create(:raw_user, name: "User Three") }
+  let!(:raw_user4) { create(:raw_user, name: "User Four") }
+  let(:raw_user_ids) { [raw_user1, raw_user2, raw_user3, raw_user4].map(&:id) }
+  before { raw_user3.destroy! }
+
+  let!(:raw_book1) { create(:raw_book, author_id: raw_user2.id, title: "Book One") }
+  let!(:raw_book2) { create(:raw_book, author_id: raw_user4.id, title: "Book Two") }
+  let!(:raw_book3) { create(:raw_book, author_id: raw_user2.id, title: "Book Three") }
+  let!(:raw_book4) { create(:raw_book, author_id: raw_user2.id, title: "Book Four") }
+
   class self::Sandbox
-    class RawUser
-      attr_accessor :id
-      attr_accessor :name
-
-      def initialize(id:, name: nil)
-        @id = id
-        @name = name
-      end
-
-      def self.list(ids)
-        ids.map { |id| USERS[id] }.compact
-      end
-
-      USERS = [
-        RawUser.new(id: 1, name: "User One"),
-        RawUser.new(id: 2, name: "User Two"),
-        RawUser.new(id: 4, name: "User Four"),
-      ].map { |user| [user.id, user] }.to_h
-    end
-
-    class RawBook
-      attr_accessor :id
-      attr_accessor :author_id
-      attr_accessor :title
-
-      def initialize(id:, author_id:, title:)
-        @id = id
-        @author_id = author_id
-        @title = title
-      end
-
-      def self.list(user_ids:)
-        id_set = user_ids.to_set
-        BOOKS.select { |b| id_set.include? b.author_id }
-      end
-
-      BOOKS = [
-        RawBook.new(id: 1, author_id: 2, title: 'Book One'),
-        RawBook.new(id: 2, author_id: 4, title: 'Book Two'),
-        RawBook.new(id: 3, author_id: 2, title: 'Book Three'),
-        RawBook.new(id: 4, author_id: 2, title: 'Book Four'),
-      ].freeze
-    end
-
     class User
       include ComputedModel
 
@@ -61,7 +33,7 @@ RSpec.describe ComputedModel do
       end
 
       define_primary_loader :raw_user do |_subdeps, ids:, **_options|
-        RawUser.list(ids).map { |raw_user| User.new(raw_user) }
+        RawUser.where(id: ids).map { |raw_user| User.new(raw_user) }
       end
 
       define_loader :books, key: -> { id } do |keys, subdeps|
@@ -97,7 +69,7 @@ RSpec.describe ComputedModel do
       end
 
       define_primary_loader :raw_book do |_subdeps, user_ids:, **_options|
-        RawBook.list(user_ids: user_ids).map { |raw_book| Book.new(raw_book) }
+        RawBook.where(author_id: user_ids).map { |raw_book| Book.new(raw_book) }
       end
 
       delegate_dependency :title, to: :raw_book
@@ -105,7 +77,7 @@ RSpec.describe ComputedModel do
   end
 
   context "when fetched with raw_user" do
-    let(:users) { self.class::Sandbox::User.list([1, 2, 3, 4], with: [:raw_user]) }
+    let(:users) { self.class::Sandbox::User.list(raw_user_ids, with: [:raw_user]) }
     it "fetches raw_user.name" do
       expect(users.size).to eq(3)
       expect(users.map { |u| u.raw_user.name}).to contain_exactly("User One", "User Two", "User Four")
@@ -119,7 +91,7 @@ RSpec.describe ComputedModel do
   end
 
   context "when fetched with name" do
-    let(:users) { self.class::Sandbox::User.list([1, 2, 3, 4], with: [:name]) }
+    let(:users) { self.class::Sandbox::User.list(raw_user_ids, with: [:name]) }
     it "fetches raw_user.name" do
       expect(users.size).to eq(3)
       expect(users.map { |u| u.raw_user.name}).to contain_exactly("User One", "User Two", "User Four")
@@ -138,7 +110,7 @@ RSpec.describe ComputedModel do
   end
 
   context "when fetched with fancy_name" do
-    let(:users) { self.class::Sandbox::User.list([1, 2, 3, 4], with: [:fancy_name]) }
+    let(:users) { self.class::Sandbox::User.list(raw_user_ids, with: [:fancy_name]) }
     it "fetches raw_user.name" do
       expect(users.size).to eq(3)
       expect(users.map { |u| u.raw_user.name}).to contain_exactly("User One", "User Two", "User Four")
@@ -156,7 +128,7 @@ RSpec.describe ComputedModel do
   end
 
   context "when fetched with book_count" do
-    let(:users) { self.class::Sandbox::User.list([1, 2, 3, 4], with: [:book_count]) }
+    let(:users) { self.class::Sandbox::User.list(raw_user_ids, with: [:book_count]) }
 
     it "fetches book_count" do
       expect(users.size).to eq(3)
@@ -165,7 +137,7 @@ RSpec.describe ComputedModel do
   end
 
   context "when fetched with book.title" do
-    let(:users) { self.class::Sandbox::User.list([1, 2, 3, 4], with: {books: [:title]}) }
+    let(:users) { self.class::Sandbox::User.list(raw_user_ids, with: { books: [:title]}) }
 
     it "fetches book_count" do
       expect(users.size).to eq(3)
