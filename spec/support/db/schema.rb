@@ -15,6 +15,7 @@ ActiveRecord::Schema.define(version: 0) do
   create_table "books", force: :cascade do |t|
     t.string "title", null: false
     t.bigint "author_id", null: false
+    t.datetime "published_at", precision: 6, null: false
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.index ["author_id"], name: "index_books_on_author_id"
