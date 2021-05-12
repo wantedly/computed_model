@@ -19,7 +19,7 @@ RSpec.describe ComputedModel do
 
   class self::Sandbox
     class User
-      include ComputedModel
+      include ComputedModel::Model
 
       attr_reader :id
 
@@ -54,7 +54,7 @@ RSpec.describe ComputedModel do
     end
 
     class Book
-      include ComputedModel
+      include ComputedModel::Model
 
       attr_reader :id, :author_id
 

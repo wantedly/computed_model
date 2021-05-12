@@ -17,7 +17,7 @@ RSpec.describe ComputedModel do
       def self.name; "User"; end
       def self.to_s; "User"; end
 
-      include ComputedModel
+      include ComputedModel::Model
 
       attr_reader :id
 
