@@ -2,14 +2,19 @@
 
 require "bundler/setup"
 require 'simplecov'
-require 'simplecov-cobertura'
+require 'simplecov-lcov'
 require 'factory_bot'
 
 SimpleCov.start do
   load_profile "test_frameworks"
   track_files "lib/**/*.rb"
   add_filter "lib/computed_model/version.rb"
-  SimpleCov.formatter = SimpleCov::Formatter::CoberturaFormatter if ENV['CI'] == 'true'
+  if ENV['CI'] == 'true'
+    SimpleCov::Formatter::LcovFormatter.config.report_with_single_file = true
+    SimpleCov::Formatter::LcovFormatter.config.single_report_path = 'coverage/coverage.lcov'
+    SimpleCov.formatter = SimpleCov::Formatter::LcovFormatter
+  end
+  enable_coverage :branch
 end
 
 require "computed_model"
