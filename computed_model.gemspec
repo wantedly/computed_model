@@ -42,6 +42,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "sqlite3", "~> 1.4"
   spec.add_development_dependency "factory_bot", "~> 6.1"
   spec.add_development_dependency "simplecov", "~> 0.21.2"
-  spec.add_development_dependency "simplecov-cobertura", "~> 1.4"
-  spec.add_development_dependency "rexml", "~> 3.2" # simplecov-cobertura needs it in Ruby >= 3.0
+  spec.add_development_dependency "simplecov-lcov", "~> 0.8.0"
 end
