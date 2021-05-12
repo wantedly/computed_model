@@ -1,7 +1,17 @@
 # frozen_string_literal: true
 
 require "bundler/setup"
+require 'simplecov'
+require 'simplecov-cobertura'
 require 'factory_bot'
+
+SimpleCov.start do
+  load_profile "test_frameworks"
+  track_files "lib/**/*.rb"
+  add_filter "lib/computed_model/version.rb"
+  SimpleCov.formatter = SimpleCov::Formatter::CoberturaFormatter if ENV['CI'] == 'true'
+end
+
 require "computed_model"
 
 RSpec.configure do |config|
