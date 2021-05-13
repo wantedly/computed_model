@@ -21,7 +21,7 @@ require 'set'
 #   end
 module ComputedModel::Model
   # A set of class methods for {ComputedModel}. Automatically included to the
-  # singleton class when you include {ComputedModel}.
+  # singleton class when you include {ComputedModel::Model}.
   module ClassMethods
     # Declares the dependency of a computed attribute. See {#computed} too.
     #
