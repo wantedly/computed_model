@@ -212,9 +212,7 @@ module ComputedModel::Model
     # @return [Array<Object>] The array of the requested models.
     #   Based on what the primary loader returns.
     def bulk_load_and_compute(deps, **options)
-      unless @__computed_model_primary_attribute
-        raise ArgumentError, "No primary loader defined"
-      end
+      __cm_check_primary_loader
 
       objs = orig_objs = nil
       plan = computing_plan(deps)
@@ -248,17 +246,18 @@ module ComputedModel::Model
     # @param deps [Array]
     # @return [ComputedModel::Plan]
     def computing_plan(deps)
+      __cm_check_primary_loader
       normalized = ComputedModel.normalize_dependencies(deps)
       load_order = []
       subdeps_hash = {}
       visiting = Set[]
       visited = Set[]
-      if @__computed_model_primary_attribute
-        load_order << @__computed_model_primary_attribute
-        visiting.add @__computed_model_primary_attribute
-        visited.add @__computed_model_primary_attribute
-        subdeps_hash[@__computed_model_primary_attribute] ||= []
-      end
+
+      load_order << @__computed_model_primary_attribute
+      visiting.add @__computed_model_primary_attribute
+      visited.add @__computed_model_primary_attribute
+      subdeps_hash[@__computed_model_primary_attribute] ||= []
+
       normalized.each do |dep_name, dep_subdeps|
         computing_plan_dfs(dep_name, dep_subdeps, load_order, subdeps_hash, visiting, visited)
       end
@@ -290,6 +289,10 @@ module ComputedModel::Model
       load_order << meth_name
       visiting.delete(meth_name)
       visited.add(meth_name)
+    end
+
+    private def __cm_check_primary_loader
+      raise ArgumentError, 'No primary loader defined' unless @__computed_model_primary_attribute
     end
   end
 
