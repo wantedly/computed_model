@@ -298,4 +298,32 @@ RSpec.describe ComputedModel do
       }.to raise_error("Invalid dependency: [:special1, :special2]")
     end
   end
+
+  describe "missing primary loader" do
+    let(:user_class) do
+      Class.new do
+        def self.name; "User"; end
+        def self.to_s; "User"; end
+
+        include ComputedModel::Model
+
+        attr_reader :id
+
+        def initialize(raw_user)
+          @id = raw_user.id
+          @raw_user = raw_user
+        end
+
+        def self.list(ids, with:)
+          bulk_load_and_compute(with, ids: ids)
+        end
+      end
+    end
+
+    it "raises an error" do
+      expect {
+        user_class.list(raw_user_ids, with: [])
+      }.to raise_error(ArgumentError, 'No primary loader defined')
+    end
+  end
 end

@@ -2,8 +2,10 @@
 
 - Breaking changes
   - `include ComputedModel` is now `include ComputedModel::Model`.
+  - `computed_model_error` was removed.
 - Changed
   - Separate `ComputedModel::Model` from `ComputedModel` https://github.com/wantedly/computed_model/pull/17
+  - Remove `computed_model_error` https://github.com/wantedly/computed_model/pull/18
 - Misc
   - Collect coverage https://github.com/wantedly/computed_model/pull/12 https://github.com/wantedly/computed_model/pull/16
   - Refactor tests https://github.com/wantedly/computed_model/pull/10 https://github.com/wantedly/computed_model/pull/15

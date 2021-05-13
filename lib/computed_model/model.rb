@@ -21,7 +21,7 @@ require 'set'
 #   end
 module ComputedModel::Model
   # A set of class methods for {ComputedModel}. Automatically included to the
-  # singleton class when you include {ComputedModel}.
+  # singleton class when you include {ComputedModel::Model}.
   module ClassMethods
     # Declares the dependency of a computed attribute. See {#computed} too.
     #
@@ -134,8 +134,7 @@ module ComputedModel::Model
     # `define_loader :foo do ... end` generates a reader `foo` and a writer `foo=`.
     # The writer is only meant to be used in the loader.
     #
-    # The responsibility of loader is to call `foo=` for all the given objects,
-    # or set `computed_model_error` otherwise.
+    # The responsibility of loader is to call `foo=` for all the given objects.
     #
     # @param meth_name [Symbol] the name of the loaded attribute.
     # @param key [Proc] The proc to collect keys.
@@ -213,9 +212,7 @@ module ComputedModel::Model
     # @return [Array<Object>] The array of the requested models.
     #   Based on what the primary loader returns.
     def bulk_load_and_compute(deps, **options)
-      unless @__computed_model_primary_attribute
-        raise ArgumentError, "No primary loader defined"
-      end
+      __cm_check_primary_loader
 
       objs = orig_objs = nil
       plan = computing_plan(deps)
@@ -241,7 +238,6 @@ module ComputedModel::Model
         else
           raise "No dependency info for #{self}##{dep_name}"
         end
-        objs.reject! { |obj| !obj.computed_model_error.nil? }
       end
 
       orig_objs
@@ -250,17 +246,18 @@ module ComputedModel::Model
     # @param deps [Array]
     # @return [ComputedModel::Plan]
     def computing_plan(deps)
+      __cm_check_primary_loader
       normalized = ComputedModel.normalize_dependencies(deps)
       load_order = []
       subdeps_hash = {}
       visiting = Set[]
       visited = Set[]
-      if @__computed_model_primary_attribute
-        load_order << @__computed_model_primary_attribute
-        visiting.add @__computed_model_primary_attribute
-        visited.add @__computed_model_primary_attribute
-        subdeps_hash[@__computed_model_primary_attribute] ||= []
-      end
+
+      load_order << @__computed_model_primary_attribute
+      visiting.add @__computed_model_primary_attribute
+      visited.add @__computed_model_primary_attribute
+      subdeps_hash[@__computed_model_primary_attribute] ||= []
+
       normalized.each do |dep_name, dep_subdeps|
         computing_plan_dfs(dep_name, dep_subdeps, load_order, subdeps_hash, visiting, visited)
       end
@@ -293,13 +290,11 @@ module ComputedModel::Model
       visiting.delete(meth_name)
       visited.add(meth_name)
     end
-  end
 
-  # An error field to prevent {ComputedModel::ClassMethods#bulk_load_and_compute}
-  # from loading remaining attributes.
-  #
-  # @return [StandardError]
-  attr_accessor :computed_model_error
+    private def __cm_check_primary_loader
+      raise ArgumentError, 'No primary loader defined' unless @__computed_model_primary_attribute
+    end
+  end
 
   def self.included(klass)
     super
