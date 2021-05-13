@@ -134,8 +134,7 @@ module ComputedModel::Model
     # `define_loader :foo do ... end` generates a reader `foo` and a writer `foo=`.
     # The writer is only meant to be used in the loader.
     #
-    # The responsibility of loader is to call `foo=` for all the given objects,
-    # or set `computed_model_error` otherwise.
+    # The responsibility of loader is to call `foo=` for all the given objects.
     #
     # @param meth_name [Symbol] the name of the loaded attribute.
     # @param key [Proc] The proc to collect keys.
@@ -241,7 +240,6 @@ module ComputedModel::Model
         else
           raise "No dependency info for #{self}##{dep_name}"
         end
-        objs.reject! { |obj| !obj.computed_model_error.nil? }
       end
 
       orig_objs
@@ -294,12 +292,6 @@ module ComputedModel::Model
       visited.add(meth_name)
     end
   end
-
-  # An error field to prevent {ComputedModel::ClassMethods#bulk_load_and_compute}
-  # from loading remaining attributes.
-  #
-  # @return [StandardError]
-  attr_accessor :computed_model_error
 
   def self.included(klass)
     super
