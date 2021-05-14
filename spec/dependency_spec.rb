@@ -297,6 +297,16 @@ RSpec.describe ComputedModel do
         end
       }.to raise_error("Invalid dependency: [:special1, :special2]")
     end
+
+    it "accepts computed field with no dependency declaration" do
+      user_class.module_eval do
+        computed def foo
+          "foo"
+        end
+      end
+      u = user_class.list(raw_user_ids, with: [:foo]).first
+      expect(u.foo).to eq("foo")
+    end
   end
 
   describe "missing primary loader" do
@@ -324,6 +334,42 @@ RSpec.describe ComputedModel do
       expect {
         user_class.list(raw_user_ids, with: [])
       }.to raise_error(ArgumentError, 'No primary loader defined')
+    end
+  end
+
+  describe "dependency before loader" do
+    before do
+      user_class.module_eval do
+        delegate_dependency :name, to: :raw_user
+
+        dependency :name
+        define_loader :foo, key: -> { id } do
+          {}
+        end
+
+        dependency
+        computed def fancy_name
+          "#{name}-san"
+        end
+      end
+    end
+
+    it "is erased" do
+      expect {
+        user_class.list(raw_user_ids, with: [:fancy_name])
+      }.to raise_error(ComputedModel::NotLoaded, 'the field name is not loaded')
+    end
+  end
+
+  describe "dependency before primary loader" do
+    it "raises an error" do
+      expect {
+        Class.new do
+          include ComputedModel::Model
+          dependency :foo
+          define_primary_loader(:bar) {}
+        end
+      }.to raise_error(ArgumentError, 'primary field cannot have a dependency')
     end
   end
 end
