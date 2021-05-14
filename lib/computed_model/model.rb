@@ -64,7 +64,7 @@ module ComputedModel::Model
       compute_meth_name = :"compute_#{meth_name}"
 
       @__computed_model_graph << ComputedModel::DepGraph::Node.new(:computed, meth_name, @__computed_model_next_dependency)
-      remove_instance_variable(:@__computed_model_next_dependency)
+      remove_instance_variable(:@__computed_model_next_dependency) if defined?(@__computed_model_next_dependency)
 
       alias_method meth_name_orig, meth_name
       define_method(meth_name) do
@@ -147,6 +147,7 @@ module ComputedModel::Model
     #     UserAuxData.where(user_id: user_ids).preload(subdeps).group_by(&:id)
     #   end
     def define_loader(meth_name, key:, &block)
+      remove_instance_variable(:@__computed_model_next_dependency) if defined?(@__computed_model_next_dependency)
       raise ArgumentError, "No block given" unless block
 
       var_name = :"@#{meth_name}"
@@ -187,6 +188,10 @@ module ComputedModel::Model
     #     end
     #   end
     def define_primary_loader(meth_name, &block)
+      if defined?(@__computed_model_next_dependency)
+        remove_instance_variable(:@__computed_model_next_dependency)
+        raise ArgumentError, 'primary field cannot have a dependency'
+      end
       raise ArgumentError, "No block given" unless block
       raise ArgumentError, "Primary loader has already been defined" if @__computed_model_primary_attribute
 
