@@ -3,9 +3,12 @@
 - Breaking changes
   - `include ComputedModel` is now `include ComputedModel::Model`.
   - `computed_model_error` was removed.
+  - `dependency` before `define_loader` will be consumed and ignored.
+  - `dependency` before `define_primary_loader` will be an error.
 - Changed
   - Separate `ComputedModel::Model` from `ComputedModel` https://github.com/wantedly/computed_model/pull/17
   - Remove `computed_model_error` https://github.com/wantedly/computed_model/pull/18
+  - Improve behavior around dependency-field pairing https://github.com/wantedly/computed_model/pull/20
 - Refactored
   - Extract `DepGraph` from `Model` https://github.com/wantedly/computed_model/pull/19
 - Misc
