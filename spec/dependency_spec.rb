@@ -56,7 +56,7 @@ RSpec.describe ComputedModel do
       it "raises an error" do
         expect {
           user_class.list(raw_user_ids, with: [:name])
-        }.to raise_error("Cyclic dependency for User#name")
+        }.to raise_error("Cyclic dependency for #name")
       end
     end
 
@@ -83,7 +83,7 @@ RSpec.describe ComputedModel do
       it "raises an error" do
         expect {
           user_class.list(raw_user_ids, with: [:name])
-        }.to raise_error("Cyclic dependency for User#name")
+        }.to raise_error("Cyclic dependency for #name")
       end
     end
 
@@ -114,7 +114,7 @@ RSpec.describe ComputedModel do
     it "raises an error" do
       expect {
         user_class.list(raw_user_ids, with: [:namae])
-      }.to raise_error("No dependency info for User#namae")
+      }.to raise_error("No dependency info for #namae")
     end
   end
 

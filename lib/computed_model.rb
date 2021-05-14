@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "computed_model/version"
+require "computed_model/dep_graph"
 require "computed_model/model"
 
 module ComputedModel
