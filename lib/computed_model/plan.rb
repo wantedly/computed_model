@@ -14,7 +14,14 @@ module ComputedModel
     # @param toplevel [Set<Symbol>] toplevel dependencies
     def initialize(load_order, toplevel)
       @load_order = load_order.freeze
+      @nodes = load_order.map { |node| [node.name, node] }.to_h
       @toplevel = toplevel
+    end
+
+    # @param name [Symbol]
+    # @return [ComputedModel::Plan::Node, nil]
+    def [](name)
+      @nodes[name]
     end
 
     # A set of information necessary to invoke the loader or the computed def.
