@@ -151,9 +151,17 @@ module ComputedModel::Model
       raise ArgumentError, "No block given" unless block
 
       var_name = :"@#{meth_name}"
+      loader_name = :"__computed_model_load_#{meth_name}"
+      writer_name = :"#{meth_name}="
 
       @__computed_model_graph << ComputedModel::DepGraph::Node.new(:loaded, meth_name, {})
-      @__computed_model_loaders[meth_name] = ComputedModel::Loader.new(key, block)
+      define_singleton_method(loader_name) do |objs, subdeps, **options|
+        keys = objs.map { |o| o.instance_exec(&key) }
+        subobj_by_key = block.call(keys, subdeps, **options)
+        objs.zip(keys) do |obj, key|
+          obj.send(writer_name, subobj_by_key[key])
+        end
+      end
 
       define_method(meth_name) do
         raise NotLoaded, "the field #{meth_name} is not loaded" unless instance_variable_defined?(var_name)
@@ -193,13 +201,14 @@ module ComputedModel::Model
         raise ArgumentError, 'primary field cannot have a dependency'
       end
       raise ArgumentError, "No block given" unless block
-      raise ArgumentError, "Primary loader has already been defined" if @__computed_model_primary_attribute
 
       var_name = :"@#{meth_name}"
+      loader_name = :"__computed_model_enumerate_#{meth_name}"
 
       @__computed_model_graph << ComputedModel::DepGraph::Node.new(:primary, meth_name, {})
-      @__computed_model_primary_loader = block
-      @__computed_model_primary_attribute = meth_name
+      define_singleton_method(loader_name) do |subdeps, **options|
+        block.call(subdeps, **options)
+      end
 
       define_method(meth_name) do
         raise NotLoaded, "the field #{meth_name} is not loaded" unless instance_variable_defined?(var_name)
@@ -216,36 +225,26 @@ module ComputedModel::Model
     # @return [Array<Object>] The array of the requested models.
     #   Based on what the primary loader returns.
     def bulk_load_and_compute(deps, **options)
-      __cm_check_primary_loader
-
-      objs = orig_objs = nil
+      objs = nil
       plan = @__computed_model_graph.plan(deps)
       plan.load_order.each do |dep_name|
         case @__computed_model_graph[dep_name].type
         when :primary
-          orig_objs = @__computed_model_primary_loader.call(plan.subdeps_hash[dep_name], **options)
-          objs = orig_objs.dup
+          loader_name = :"__computed_model_enumerate_#{dep_name}"
+          objs = send(loader_name, plan.subdeps_hash[dep_name], **options)
         when :computed
           objs.each do |obj|
             obj.send(:"compute_#{dep_name}")
           end
         when :loaded
-          l = @__computed_model_loaders[dep_name]
-          keys = objs.map { |o| o.instance_exec(&(l.key_proc)) }
-          subobj_by_key = l.load_proc.call(keys, plan.subdeps_hash[dep_name], **options)
-          objs.zip(keys) do |obj, key|
-            obj.send(:"#{dep_name}=", subobj_by_key[key])
-          end
+          loader_name = :"__computed_model_load_#{dep_name}"
+          send(loader_name, objs, plan.subdeps_hash[dep_name], **options)
         else
           raise "No dependency info for #{self}##{dep_name}"
         end
       end
 
-      orig_objs
-    end
-
-    private def __cm_check_primary_loader
-      raise ArgumentError, 'No primary loader defined' unless @__computed_model_primary_attribute
+      objs
     end
   end
 
@@ -253,8 +252,5 @@ module ComputedModel::Model
     super
     klass.extend ClassMethods
     klass.instance_variable_set(:@__computed_model_graph, ComputedModel::DepGraph.new)
-    klass.instance_variable_set(:@__computed_model_loaders, {})
-    klass.instance_variable_set(:@__computed_model_primary_loader, nil)
-    klass.instance_variable_set(:@__computed_model_primary_attribute, nil)
   end
 end

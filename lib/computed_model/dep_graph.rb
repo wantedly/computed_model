@@ -69,6 +69,7 @@ module ComputedModel
         subdeps_hash[node.name] ||= []
       end
 
+      raise ArgumentError, 'No primary loader defined' if load_order.empty?
       raise "Multiple primary fields: #{load_order.inspect}" if load_order.size > 1
 
       normalized.each do |name, subdeps|
