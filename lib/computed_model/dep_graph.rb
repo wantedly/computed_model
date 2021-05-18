@@ -76,7 +76,11 @@ module ComputedModel
         plan_dfs(name, subdeps, load_order, subdeps_hash, visiting, visited)
       end
 
-      ComputedModel::Plan.new(load_order, subdeps_hash)
+      nodes = load_order.map do |name|
+        deps = @nodes[name].edges.values.map(&:name).to_set
+        ComputedModel::Plan::Node.new(name, deps, subdeps_hash[name] || [])
+      end
+      ComputedModel::Plan.new(nodes, normalized.keys.to_set)
     end
 
     # @param name [Symbol]
