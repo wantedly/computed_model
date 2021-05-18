@@ -40,7 +40,7 @@ RSpec.describe ComputedModel::DepGraph do
       graph << ComputedModel::DepGraph::Node.new(:computed, :field3, { field2: {} })
       graph << ComputedModel::DepGraph::Node.new(:primary, :field4, {})
       plan = graph.plan([:field1, :field2, :field3])
-      expect(plan.load_order).to eq([:field4, :field2, :field1, :field3])
+      expect(plan.load_order.map(&:name)).to eq([:field4, :field2, :field1, :field3])
     end
 
     it 'returns a plan with only necessary fields' do
@@ -50,7 +50,7 @@ RSpec.describe ComputedModel::DepGraph do
       graph << ComputedModel::DepGraph::Node.new(:computed, :field3, { field2: {} })
       graph << ComputedModel::DepGraph::Node.new(:primary, :field4, {})
       plan = graph.plan([:field1])
-      expect(plan.load_order).to eq([:field4, :field2, :field1])
+      expect(plan.load_order.map(&:name)).to eq([:field4, :field2, :field1])
     end
 
     it 'collects subdeps_hash' do
@@ -61,13 +61,44 @@ RSpec.describe ComputedModel::DepGraph do
       graph << ComputedModel::DepGraph::Node.new(:primary, :field4, {})
       graph << ComputedModel::DepGraph::Node.new(:computed, :field5, { field2: { c: 420 } })
       plan = graph.plan([:field1, :field5])
-      expect(plan.load_order).to eq([:field4, :field2, :field1, :field5])
-      expect(plan.subdeps_hash).to eq({
-                                        field1: [],
-                                        field2: [{ a: 42 }, { c: 420 }],
-                                        field4: [],
-                                        field5: []
-                                      })
+      expect(plan.load_order.map(&:name)).to eq([:field4, :field2, :field1, :field5])
+      subdeps_expect = {
+        field4: [],
+        field2: [{ a: 42 }, { c: 420 }],
+        field1: [],
+        field5: []
+      }
+      expect(plan.load_order.map { |n| [n.name, n.subdeps] }.to_h).to eq(subdeps_expect)
+    end
+
+    it 'collects deps' do
+      graph = ComputedModel::DepGraph.new
+      graph << ComputedModel::DepGraph::Node.new(:computed, :field1, { field2: { a: 42 } })
+      graph << ComputedModel::DepGraph::Node.new(:loaded, :field2, {})
+      graph << ComputedModel::DepGraph::Node.new(:computed, :field3, { field2: { b: 84 } })
+      graph << ComputedModel::DepGraph::Node.new(:primary, :field4, {})
+      graph << ComputedModel::DepGraph::Node.new(:computed, :field5, { field2: { c: 420 } })
+      plan = graph.plan([:field1, :field5])
+      expect(plan.load_order.map(&:name)).to eq([:field4, :field2, :field1, :field5])
+      deps_expect = {
+        field4: Set[],
+        field2: Set[],
+        field1: Set[:field2],
+        field5: Set[:field2]
+      }
+      expect(plan.load_order.map { |n| [n.name, n.deps] }.to_h).to eq(deps_expect)
+    end
+
+    it 'collects toplevel dependencies' do
+      graph = ComputedModel::DepGraph.new
+      graph << ComputedModel::DepGraph::Node.new(:computed, :field1, { field2: { a: 42 } })
+      graph << ComputedModel::DepGraph::Node.new(:loaded, :field2, {})
+      graph << ComputedModel::DepGraph::Node.new(:computed, :field3, { field2: { b: 84 } })
+      graph << ComputedModel::DepGraph::Node.new(:primary, :field4, {})
+      graph << ComputedModel::DepGraph::Node.new(:computed, :field5, { field2: { c: 420 } })
+      plan = graph.plan([:field1, :field5])
+      expect(plan.load_order.map(&:name)).to eq([:field4, :field2, :field1, :field5])
+      expect(plan.toplevel).to eq(Set[:field1, :field5])
     end
 
     it 'raises an error on multiple primary fields' do

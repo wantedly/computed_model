@@ -12,6 +12,7 @@
 - Refactored
   - Extract `DepGraph` from `Model` https://github.com/wantedly/computed_model/pull/19
   - Define loader as a singleton method https://github.com/wantedly/computed_model/pull/21
+  - Refactor `ComputedModel::Plan` https://github.com/wantedly/computed_model/pull/22
 - Misc
   - Collect coverage https://github.com/wantedly/computed_model/pull/12 https://github.com/wantedly/computed_model/pull/16
   - Refactor tests https://github.com/wantedly/computed_model/pull/10 https://github.com/wantedly/computed_model/pull/15

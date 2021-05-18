@@ -227,20 +227,20 @@ module ComputedModel::Model
     def bulk_load_and_compute(deps, **options)
       objs = nil
       plan = @__computed_model_graph.plan(deps)
-      plan.load_order.each do |dep_name|
-        case @__computed_model_graph[dep_name].type
+      plan.load_order.each do |node|
+        case @__computed_model_graph[node.name].type
         when :primary
-          loader_name = :"__computed_model_enumerate_#{dep_name}"
-          objs = send(loader_name, plan.subdeps_hash[dep_name], **options)
+          loader_name = :"__computed_model_enumerate_#{node.name}"
+          objs = send(loader_name, node.subdeps, **options)
         when :computed
           objs.each do |obj|
-            obj.send(:"compute_#{dep_name}")
+            obj.send(:"compute_#{node.name}")
           end
         when :loaded
-          loader_name = :"__computed_model_load_#{dep_name}"
-          send(loader_name, objs, plan.subdeps_hash[dep_name], **options)
+          loader_name = :"__computed_model_load_#{node.name}"
+          send(loader_name, objs, node.subdeps, **options)
         else
-          raise "No dependency info for #{self}##{dep_name}"
+          raise "No dependency info for #{self}##{node.name}"
         end
       end
 
