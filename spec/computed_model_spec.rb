@@ -92,9 +92,11 @@ RSpec.describe ComputedModel do
 
   context "when fetched with name" do
     let(:users) { self.class::Sandbox::User.list(raw_user_ids, with: [:name]) }
-    it "fetches raw_user.name" do
+    it "doesn't allow accessing raw_user.name" do
       expect(users.size).to eq(3)
-      expect(users.map { |u| u.raw_user.name}).to contain_exactly("User One", "User Two", "User Four")
+      expect {
+        users[0].raw_user
+      }.to raise_error(ComputedModel::ForbiddenDependency, 'Not a direct dependency: raw_user')
     end
 
     it "fetches name" do
@@ -111,14 +113,18 @@ RSpec.describe ComputedModel do
 
   context "when fetched with fancy_name" do
     let(:users) { self.class::Sandbox::User.list(raw_user_ids, with: [:fancy_name]) }
-    it "fetches raw_user.name" do
+    it "doesn't allow accessing raw_user.name" do
       expect(users.size).to eq(3)
-      expect(users.map { |u| u.raw_user.name}).to contain_exactly("User One", "User Two", "User Four")
+      expect {
+        users[0].raw_user
+      }.to raise_error(ComputedModel::ForbiddenDependency, 'Not a direct dependency: raw_user')
     end
 
-    it "fetches name" do
+    it "doesn't allow accessing name" do
       expect(users.size).to eq(3)
-      expect(users.map { |u| u.name}).to contain_exactly("User One", "User Two", "User Four")
+      expect {
+        users[0].name
+      }.to raise_error(ComputedModel::ForbiddenDependency, 'Not a direct dependency: name')
     end
 
     it "fetches fancy_name" do

@@ -10,6 +10,10 @@ module ComputedModel
   # but that attribute isn't loaded by the batch loader.
   class NotLoaded < StandardError; end
 
+  # An error raised when you tried to read from a loaded/computed attribute,
+  # but that attribute isn't listed in the dependencies list.
+  class ForbiddenDependency < StandardError; end
+
   # @param deps [Array<(Symbol, Hash)>, Hash, Symbol]
   # @return [Hash{Symbol=>Array}]
   def self.normalize_dependencies(deps)

@@ -69,10 +69,17 @@ module ComputedModel::Model
       alias_method meth_name_orig, meth_name
       define_method(meth_name) do
         raise ComputedModel::NotLoaded, "the field #{meth_name} is not loaded" unless instance_variable_defined?(var_name)
+
+        __computed_model_check_availability(meth_name)
         instance_variable_get(var_name)
       end
       define_method(compute_meth_name) do
-        instance_variable_set(var_name, send(meth_name_orig))
+        @__computed_model_stack << @__computed_model_plan[meth_name].deps
+        begin
+          instance_variable_set(var_name, send(meth_name_orig))
+        ensure
+          @__computed_model_stack.pop
+        end
       end
       if public_method_defined?(meth_name_orig)
         public meth_name
@@ -165,6 +172,8 @@ module ComputedModel::Model
 
       define_method(meth_name) do
         raise NotLoaded, "the field #{meth_name} is not loaded" unless instance_variable_defined?(var_name)
+
+        __computed_model_check_availability(meth_name)
         instance_variable_get(var_name)
       end
       attr_writer meth_name
@@ -212,6 +221,8 @@ module ComputedModel::Model
 
       define_method(meth_name) do
         raise NotLoaded, "the field #{meth_name} is not loaded" unless instance_variable_defined?(var_name)
+
+        __computed_model_check_availability(meth_name)
         instance_variable_get(var_name)
       end
       attr_writer meth_name
@@ -232,6 +243,10 @@ module ComputedModel::Model
         when :primary
           loader_name = :"__computed_model_enumerate_#{node.name}"
           objs = send(loader_name, node.subdeps, **options)
+          objs.each do |obj|
+            obj.instance_variable_set(:@__computed_model_plan, plan)
+            obj.instance_variable_set(:@__computed_model_stack, [plan.toplevel])
+          end
         when :computed
           objs.each do |obj|
             obj.send(:"compute_#{node.name}")
@@ -246,6 +261,13 @@ module ComputedModel::Model
 
       objs
     end
+  end
+
+  # @param name [Symbol]
+  private def __computed_model_check_availability(name)
+    return if @__computed_model_stack.last.include?(name)
+
+    raise ComputedModel::ForbiddenDependency, "Not a direct dependency: #{name}"
   end
 
   def self.included(klass)
