@@ -56,15 +56,25 @@ RSpec.describe ComputedModel do
       it "raises an error" do
         expect {
           user_class.list(raw_user_ids, with: [:name])
-        }.to raise_error("Cyclic dependency for #name")
+        }.to raise_error(ComputedModel::CyclicDependency, "Cyclic dependency for #fancy_name")
       end
     end
 
     context "when the dependency is not referenced" do
-      it "doesn't raise an error" do
+      it "raises an error" do
         expect {
           user_class.list(raw_user_ids, with: [])
-        }.not_to raise_error
+        }.to raise_error(ComputedModel::CyclicDependency, "Cyclic dependency for #fancy_name")
+      end
+    end
+
+    context "when verify_dependencies is called" do
+      it "raises an error" do
+        expect {
+          user_class.module_eval do
+            verify_dependencies
+          end
+        }.to raise_error(ComputedModel::CyclicDependency, "Cyclic dependency for #fancy_name")
       end
     end
   end
@@ -83,34 +93,47 @@ RSpec.describe ComputedModel do
       it "raises an error" do
         expect {
           user_class.list(raw_user_ids, with: [:name])
-        }.to raise_error("Cyclic dependency for #name")
+        }.to raise_error(ComputedModel::CyclicDependency, "Cyclic dependency for #name")
       end
     end
 
     context "when the dependency is not referenced" do
-      it "doesn't raise an error" do
+      it "raises an error" do
         expect {
           user_class.list(raw_user_ids, with: [])
-        }.not_to raise_error
+        }.to raise_error(ComputedModel::CyclicDependency, "Cyclic dependency for #name")
+      end
+    end
+
+    context "when verify_dependencies is called" do
+      it "raises an error" do
+        expect {
+          user_class.module_eval do
+            verify_dependencies
+          end
+        }.to raise_error(ComputedModel::CyclicDependency, "Cyclic dependency for #name")
       end
     end
   end
 
-  describe "unknown dependency name" do
+  describe "unknown indirect dependency name" do
     before do
       user_class.module_eval do
-        dependency :name
+        dependency :namae
         computed def fancy_name
-          "#{name}-san"
-        end
-
-        dependency :fancy_name
-        computed def name
-          fancy_name.sub(/-san$/, '')
+          "#{namae}-san"
         end
       end
     end
 
+    it "raises an error" do
+      expect {
+        user_class.list(raw_user_ids, with: [:fancy_name])
+      }.to raise_error("No dependency info for #namae")
+    end
+  end
+
+  describe "unknown dependency name" do
     it "raises an error" do
       expect {
         user_class.list(raw_user_ids, with: [:namae])
