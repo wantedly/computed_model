@@ -32,14 +32,14 @@ RSpec.describe ComputedModel::DepGraph do
     end
   end
 
-  describe '#plan' do
+  describe '#tsort.plan' do
     it 'returns a sorted plan' do
       graph = ComputedModel::DepGraph.new
       graph << ComputedModel::DepGraph::Node.new(:computed, :field1, { field2: {} })
       graph << ComputedModel::DepGraph::Node.new(:loaded, :field2, {})
       graph << ComputedModel::DepGraph::Node.new(:computed, :field3, { field2: {} })
       graph << ComputedModel::DepGraph::Node.new(:primary, :field4, {})
-      plan = graph.plan([:field1, :field2, :field3])
+      plan = graph.tsort.plan([:field1, :field2, :field3])
       expect(plan.load_order.map(&:name)).to eq([:field4, :field2, :field1, :field3])
     end
 
@@ -49,7 +49,7 @@ RSpec.describe ComputedModel::DepGraph do
       graph << ComputedModel::DepGraph::Node.new(:loaded, :field2, {})
       graph << ComputedModel::DepGraph::Node.new(:computed, :field3, { field2: {} })
       graph << ComputedModel::DepGraph::Node.new(:primary, :field4, {})
-      plan = graph.plan([:field1])
+      plan = graph.tsort.plan([:field1])
       expect(plan.load_order.map(&:name)).to eq([:field4, :field2, :field1])
     end
 
@@ -60,7 +60,7 @@ RSpec.describe ComputedModel::DepGraph do
       graph << ComputedModel::DepGraph::Node.new(:computed, :field3, { field2: { b: 84 } })
       graph << ComputedModel::DepGraph::Node.new(:primary, :field4, {})
       graph << ComputedModel::DepGraph::Node.new(:computed, :field5, { field2: { c: 420 } })
-      plan = graph.plan([:field1, :field5])
+      plan = graph.tsort.plan([:field1, :field5])
       expect(plan.load_order.map(&:name)).to eq([:field4, :field2, :field1, :field5])
       subdeps_expect = {
         field4: [],
@@ -78,7 +78,7 @@ RSpec.describe ComputedModel::DepGraph do
       graph << ComputedModel::DepGraph::Node.new(:computed, :field3, { field2: { b: 84 } })
       graph << ComputedModel::DepGraph::Node.new(:primary, :field4, {})
       graph << ComputedModel::DepGraph::Node.new(:computed, :field5, { field2: { c: 420 } })
-      plan = graph.plan([:field1, :field5])
+      plan = graph.tsort.plan([:field1, :field5])
       expect(plan.load_order.map(&:name)).to eq([:field4, :field2, :field1, :field5])
       deps_expect = {
         field4: Set[],
@@ -96,7 +96,7 @@ RSpec.describe ComputedModel::DepGraph do
       graph << ComputedModel::DepGraph::Node.new(:computed, :field3, { field2: { b: 84 } })
       graph << ComputedModel::DepGraph::Node.new(:primary, :field4, {})
       graph << ComputedModel::DepGraph::Node.new(:computed, :field5, { field2: { c: 420 } })
-      plan = graph.plan([:field1, :field5])
+      plan = graph.tsort.plan([:field1, :field5])
       expect(plan.load_order.map(&:name)).to eq([:field4, :field2, :field1, :field5])
       expect(plan.toplevel).to eq(Set[:field1, :field5])
     end
@@ -106,7 +106,7 @@ RSpec.describe ComputedModel::DepGraph do
       graph << ComputedModel::DepGraph::Node.new(:primary, :field1, {})
       graph << ComputedModel::DepGraph::Node.new(:primary, :field2, {})
       expect {
-        graph.plan([])
+        graph.tsort.plan([])
       }.to raise_error(RuntimeError, 'Multiple primary fields: [:field1, :field2]')
     end
   end

@@ -14,6 +14,8 @@ module ComputedModel
   # but that attribute isn't listed in the dependencies list.
   class ForbiddenDependency < StandardError; end
 
+  class CyclicDependency < StandardError; end
+
   # @param deps [Array<(Symbol, Hash)>, Hash, Symbol]
   # @return [Hash{Symbol=>Array}]
   def self.normalize_dependencies(deps)

@@ -237,9 +237,10 @@ module ComputedModel::Model
     #   Based on what the primary loader returns.
     def bulk_load_and_compute(deps, **options)
       objs = nil
-      plan = @__computed_model_graph.plan(deps)
+      sorted = __computed_model_sorted_graph
+      plan = sorted.plan(deps)
       plan.load_order.each do |node|
-        case @__computed_model_graph[node.name].type
+        case sorted.original[node.name].type
         when :primary
           loader_name = :"__computed_model_enumerate_#{node.name}"
           objs = send(loader_name, node.subdeps, **options)
@@ -261,6 +262,15 @@ module ComputedModel::Model
 
       objs
     end
+
+    def verify_dependencies
+      __computed_model_sorted_graph
+      nil
+    end
+
+    private def __computed_model_sorted_graph
+      @__computed_model_sorted_graph ||= @__computed_model_graph.tsort
+    end
   end
 
   # @param name [Symbol]
@@ -274,5 +284,6 @@ module ComputedModel::Model
     super
     klass.extend ClassMethods
     klass.instance_variable_set(:@__computed_model_graph, ComputedModel::DepGraph.new)
+    klass.instance_variable_set(:@__computed_model_sorted_graph, nil)
   end
 end

@@ -6,11 +6,17 @@
   - `computed_model_error` was removed.
   - `dependency` before `define_loader` will be consumed and ignored.
   - `dependency` before `define_primary_loader` will be an error.
+  - Cyclic dependency is an error even if it is unused.
+- Notable behavioral changes
+  - The order in which fields are loaded is changed.
 - Changed
   - Separate `ComputedModel::Model` from `ComputedModel` https://github.com/wantedly/computed_model/pull/17
   - Remove `computed_model_error` https://github.com/wantedly/computed_model/pull/18
   - Improve behavior around dependency-field pairing https://github.com/wantedly/computed_model/pull/20
   - Implement strict field access https://github.com/wantedly/computed_model/pull/23
+  - Preprocess graph with topological sorting https://github.com/wantedly/computed_model/pull/24
+- Added
+  - `ComputedModel::Model#verify_dependencies`
 - Refactored
   - Extract `DepGraph` from `Model` https://github.com/wantedly/computed_model/pull/19
   - Define loader as a singleton method https://github.com/wantedly/computed_model/pull/21
