@@ -487,21 +487,15 @@ RSpec.describe ComputedModel do
         delegate_dependency :name, to: :raw_user
 
         dependency :name
-        define_loader :foo, key: -> { id } do
-          {}
-        end
-
-        dependency
-        computed def fancy_name
-          "#{name}-san"
+        define_loader :fancy_name, key: -> { self } do |objs, _subdeps|
+          objs.map { |obj| [obj, "#{obj.name}-san"] }.to_h
         end
       end
     end
 
-    it "is erased" do
-      expect {
-        user_class.list(raw_user_ids, with: [:fancy_name])
-      }.to raise_error(ComputedModel::NotLoaded, 'the field name is not loaded')
+    it "is consumed by define_loader" do
+      u = user_class.list(raw_user_ids, with: [:fancy_name]).first
+      expect(u.fancy_name).to eq("User One-san")
     end
   end
 

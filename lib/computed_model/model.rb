@@ -158,14 +158,14 @@ module ComputedModel::Model
     #     UserAuxData.where(user_id: user_ids).preload(subdeps).group_by(&:id)
     #   end
     def define_loader(meth_name, key:, &block)
-      remove_instance_variable(:@__computed_model_next_dependency) if defined?(@__computed_model_next_dependency)
       raise ArgumentError, "No block given" unless block
 
       var_name = :"@#{meth_name}"
       loader_name = :"__computed_model_load_#{meth_name}"
       writer_name = :"#{meth_name}="
 
-      @__computed_model_graph << ComputedModel::DepGraph::Node.new(:loaded, meth_name, {})
+      @__computed_model_graph << ComputedModel::DepGraph::Node.new(:loaded, meth_name, @__computed_model_next_dependency)
+      remove_instance_variable(:@__computed_model_next_dependency) if defined?(@__computed_model_next_dependency)
       define_singleton_method(loader_name) do |objs, subdeps, **options|
         keys = objs.map { |o| o.instance_exec(&key) }
         subobj_by_key = block.call(keys, subdeps, **options)
@@ -255,7 +255,16 @@ module ComputedModel::Model
           end
         when :loaded
           loader_name = :"__computed_model_load_#{node.name}"
-          send(loader_name, objs, ComputedModel.filter_subdeps(node.subdeps), **options)
+          objs.each do |obj|
+            obj.instance_variable_get(:@__computed_model_stack) << node
+          end
+          begin
+            send(loader_name, objs, ComputedModel.filter_subdeps(node.subdeps), **options)
+          ensure
+            objs.each do |obj|
+              obj.instance_variable_get(:@__computed_model_stack).pop
+            end
+          end
         else # when :computed
           objs.each do |obj|
             obj.send(:"compute_#{node.name}")
