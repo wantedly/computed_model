@@ -88,6 +88,12 @@ RSpec.describe ComputedModel do
         users[0].name
       }.to raise_error(ComputedModel::NotLoaded, "the field name is not loaded")
     end
+
+    it "doesn't fetch books" do
+      expect {
+        users[0].books
+      }.to raise_error(ComputedModel::NotLoaded, "the field books is not loaded")
+    end
   end
 
   context "when fetched with name" do

@@ -20,9 +20,17 @@ ActiveRecord::Schema.define(version: 0) do
     t.index ["author_id"], name: "index_books_on_author_id"
   end
 
+  create_table "user_extras", force: :cascade do |t|
+    t.string "token", null: false
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "name", null: false
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
   end
+
+  add_foreign_key "user_extras", "users", column: "id"
 end
