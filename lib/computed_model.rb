@@ -24,16 +24,31 @@ module ComputedModel
     Array(deps).each do |elem|
       case elem
       when Symbol
-        normalized[elem] ||= []
+        normalized[elem] ||= [true]
       when Hash
         elem.each do |k, v|
           v = [v] if v.is_a?(Hash)
           normalized[k] ||= []
           normalized[k].push(*Array(v))
+          normalized[k].push(true) if v == []
         end
       else; raise "Invalid dependency: #{elem.inspect}"
       end
     end
     normalized
+  end
+
+  # @param subdeps [Array]
+  # @return [Array]
+  def self.filter_subdeps(subdeps)
+    subdeps.select { |x| x && x != true }
+  end
+
+  # Convenience class to easily access normalized version of dependencies.
+  class NormalizableArray < Array
+    # @return [Hash{Symbol=>Array}]
+    def normalized
+      @normalized ||= ComputedModel.normalize_dependencies(ComputedModel.filter_subdeps(self))
+    end
   end
 end

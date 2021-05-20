@@ -135,10 +135,31 @@ module ComputedModel
       attr_reader :spec
 
       # @param name [Symbol] the name of the dependency (not the dependent)
-      # @param spec [Array] an auxiliary data called subdeps
+      # @param spec [Array, Proc] an auxiliary data called subdeps
       def initialize(name, spec)
         @name = name
         @spec = Array(spec)
+      end
+
+      # @param subdeps [Array]
+      # @return [Array, nil]
+      def evaluate(subdeps)
+        return @spec if @spec.all? { |specelem| !specelem.respond_to?(:call) }
+
+        evaluated = []
+        @spec.each do |specelem|
+          if specelem.respond_to?(:call)
+            ret = specelem.call(subdeps)
+            if ret.is_a?(Array)
+              evaluated.push(*ret)
+            else
+              evaluated << ret
+            end
+          else
+            evaluated << specelem
+          end
+        end
+        evaluated
       end
     end
 
@@ -184,12 +205,17 @@ module ComputedModel
           uses.add(node.name) if node.type == :primary
           next unless uses.include?(node.name)
 
-          deps = node.edges.values.map(&:name).to_set
-          plan_nodes.push(ComputedModel::Plan::Node.new(node.name, deps, subdeps_hash[node.name] || []))
+          node_subdeps = ComputedModel::NormalizableArray.new(subdeps_hash[node.name] || [])
+          deps = Set[]
           node.edges.each_value do |edge|
-            uses.add(edge.name)
-            (subdeps_hash[edge.name] ||= []).unshift(*edge.spec)
+            specval = edge.evaluate(node_subdeps)
+            if specval.any?
+              deps.add(edge.name)
+              uses.add(edge.name)
+              (subdeps_hash[edge.name] ||= []).unshift(*specval)
+            end
           end
+          plan_nodes.push(ComputedModel::Plan::Node.new(node.name, deps, node_subdeps))
         end
         ComputedModel::Plan.new(plan_nodes.reverse, normalized.keys.to_set)
       end

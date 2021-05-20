@@ -74,7 +74,7 @@ module ComputedModel::Model
         instance_variable_get(var_name)
       end
       define_method(compute_meth_name) do
-        @__computed_model_stack << @__computed_model_plan[meth_name].deps
+        @__computed_model_stack << @__computed_model_plan[meth_name]
         begin
           instance_variable_set(var_name, send(meth_name_orig))
         ensure
@@ -243,10 +243,11 @@ module ComputedModel::Model
         case sorted.original[node.name].type
         when :primary
           loader_name = :"__computed_model_enumerate_#{node.name}"
-          objs = send(loader_name, node.subdeps, **options)
+          objs = send(loader_name, ComputedModel.filter_subdeps(node.subdeps), **options)
+          dummy_toplevel_node = ComputedModel::Plan::Node.new(nil, plan.toplevel, nil)
           objs.each do |obj|
             obj.instance_variable_set(:@__computed_model_plan, plan)
-            obj.instance_variable_set(:@__computed_model_stack, [plan.toplevel])
+            obj.instance_variable_set(:@__computed_model_stack, [dummy_toplevel_node])
           end
         when :computed
           objs.each do |obj|
@@ -254,7 +255,7 @@ module ComputedModel::Model
           end
         when :loaded
           loader_name = :"__computed_model_load_#{node.name}"
-          send(loader_name, objs, node.subdeps, **options)
+          send(loader_name, objs, ComputedModel.filter_subdeps(node.subdeps), **options)
         else
           raise "No dependency info for #{self}##{node.name}"
         end
@@ -273,9 +274,23 @@ module ComputedModel::Model
     end
   end
 
+  # Returns dependency of the currently computing field,
+  # or the toplevel dependency if called outside of computed fields.
+  # @return [Set<Symbol>, nil]
+  def current_deps
+    @__computed_model_stack.last.deps
+  end
+
+  # Returns subdependencies passed to the currently computing field,
+  # or nil if called outside of computed fields.
+  # @return [Hash{Symbol=>Array}, nil]
+  def current_subdeps
+    @__computed_model_stack.last.subdeps
+  end
+
   # @param name [Symbol]
   private def __computed_model_check_availability(name)
-    return if @__computed_model_stack.last.include?(name)
+    return if @__computed_model_stack.last.deps.include?(name)
 
     raise ComputedModel::ForbiddenDependency, "Not a direct dependency: #{name}"
   end
