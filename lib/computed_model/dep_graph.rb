@@ -135,7 +135,7 @@ module ComputedModel
       attr_reader :spec
 
       # @param name [Symbol] the name of the dependency (not the dependent)
-      # @param spec [Array, Proc] an auxiliary data called subdeps
+      # @param spec [Array] an auxiliary data called subdeps
       def initialize(name, spec)
         @name = name
         @spec = Array(spec)
