@@ -175,7 +175,7 @@ module ComputedModel::Model
       end
 
       define_method(meth_name) do
-        raise NotLoaded, "the field #{meth_name} is not loaded" unless instance_variable_defined?(var_name)
+        raise ComputedModel::NotLoaded, "the field #{meth_name} is not loaded" unless instance_variable_defined?(var_name)
 
         __computed_model_check_availability(meth_name)
         instance_variable_get(var_name)
@@ -224,7 +224,7 @@ module ComputedModel::Model
       end
 
       define_method(meth_name) do
-        raise NotLoaded, "the field #{meth_name} is not loaded" unless instance_variable_defined?(var_name)
+        raise ComputedModel::NotLoaded, "the field #{meth_name} is not loaded" unless instance_variable_defined?(var_name)
 
         __computed_model_check_availability(meth_name)
         instance_variable_get(var_name)
