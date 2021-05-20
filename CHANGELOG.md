@@ -11,6 +11,7 @@
   - `ComputedModel.normalized_dependencies` now returns `[true]` instead of `[]` as an empty value.
 - Notable behavioral changes
   - The order in which fields are loaded is changed.
+  - `ComputedModel::Model` now uses `ActiveSupport::Concern`.
 - Changed
   - Separate `ComputedModel::Model` from `ComputedModel` https://github.com/wantedly/computed_model/pull/17
   - Remove `computed_model_error` https://github.com/wantedly/computed_model/pull/18
@@ -18,6 +19,7 @@
   - Implement strict field access https://github.com/wantedly/computed_model/pull/23
   - Preprocess graph with topological sorting https://github.com/wantedly/computed_model/pull/24
   - Implement conditional dependencies and subdependency mapping/passthrough https://github.com/wantedly/computed_model/pull/25
+  - Use `ActiveSupport::Concern` https://github.com/wantedly/computed_model/pull/26
 - Added
   - `ComputedModel::Model#verify_dependencies`
 - Refactored

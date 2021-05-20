@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'active_support/concern'
+
 # A mixin for batch-loadable compound models.
 #
 # @example typical structure of a computed model
@@ -17,6 +19,8 @@
 #     computed def something ... end
 #   end
 module ComputedModel::Model
+  extend ActiveSupport::Concern
+
   # A set of class methods for {ComputedModel}. Automatically included to the
   # singleton class when you include {ComputedModel::Model}.
   module ClassMethods
@@ -295,10 +299,8 @@ module ComputedModel::Model
     raise ComputedModel::ForbiddenDependency, "Not a direct dependency: #{name}"
   end
 
-  def self.included(klass)
-    super
-    klass.extend ClassMethods
-    klass.instance_variable_set(:@__computed_model_graph, ComputedModel::DepGraph.new)
-    klass.instance_variable_set(:@__computed_model_sorted_graph, nil)
+  included do
+    @__computed_model_graph = ComputedModel::DepGraph.new
+    @__computed_model_sorted_graph = nil
   end
 end
