@@ -65,8 +65,8 @@ RSpec.describe ComputedModel::DepGraph do
       subdeps_expect = {
         field4: [],
         field2: [{ a: 42 }, { c: 420 }],
-        field1: [],
-        field5: []
+        field1: [true],
+        field5: [true]
       }
       expect(plan.load_order.map { |n| [n.name, n.subdeps] }.to_h).to eq(subdeps_expect)
     end

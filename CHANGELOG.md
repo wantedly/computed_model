@@ -7,6 +7,8 @@
   - `dependency` before `define_loader` will be consumed and ignored.
   - `dependency` before `define_primary_loader` will be an error.
   - Cyclic dependency is an error even if it is unused.
+  - `nil`, `true`, and `false` in subdeps will be filtered out before passed to a loader.
+  - `ComputedModel.normalized_dependencies` now returns `[true]` instead of `[]` as an empty value.
 - Notable behavioral changes
   - The order in which fields are loaded is changed.
 - Changed
@@ -15,6 +17,7 @@
   - Improve behavior around dependency-field pairing https://github.com/wantedly/computed_model/pull/20
   - Implement strict field access https://github.com/wantedly/computed_model/pull/23
   - Preprocess graph with topological sorting https://github.com/wantedly/computed_model/pull/24
+  - Implement conditional dependencies and subdependency mapping/passthrough https://github.com/wantedly/computed_model/pull/25
 - Added
   - `ComputedModel::Model#verify_dependencies`
 - Refactored

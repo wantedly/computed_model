@@ -37,6 +37,88 @@ RSpec.describe ComputedModel do
   end
   before { stub_const("User", user_class) }
 
+  describe "conditional dependency" do
+    before do
+      user_class.module_eval do
+        computed def foo; "foo"; end
+
+        dependency foo: -> (subdeps) { subdeps.normalized[:require_foo]&.any? }
+        computed def bar
+          f = current_deps.include?(:foo) ? foo : "not foo"
+          ["bar", current_deps, current_subdeps, f]
+        end
+      end
+    end
+
+    it "doesn't require foo if require_foo is missing" do
+      u = user_class.list(raw_user_ids, with: { bar: true }).first
+      expect(u.bar).to eq(["bar", Set[], [true], "not foo"])
+      expect(u.instance_variable_defined?(:@foo)).to be(false)
+    end
+
+    it "requires foo if require_foo is given" do
+      u = user_class.list(raw_user_ids, with: { bar: { require_foo: true } }).first
+      expect(u.bar).to eq(["bar", Set[:foo], [{ require_foo: true }], "foo"])
+      expect(u.instance_variable_defined?(:@foo)).to be(true)
+    end
+  end
+
+  describe "subdependency mapping" do
+    before do
+      user_class.module_eval do
+        computed def foo
+          ["foo", current_subdeps]
+        end
+
+        dependency foo: -> (subdeps) { subdeps.normalized[:foospec] }
+        computed def bar
+          f = current_deps.include?(:foo) ? foo : ["not foo"]
+          ["bar", current_deps, current_subdeps, f]
+        end
+      end
+    end
+
+    it "doesn't require foo if foospec is missing" do
+      u = user_class.list(raw_user_ids, with: { bar: [] }).first
+      expect(u.bar).to eq(["bar", Set[], [true], ["not foo"]])
+      expect(u.instance_variable_defined?(:@foo)).to be(false)
+    end
+
+    it "doesn't require foo if foospec is false" do
+      u = user_class.list(raw_user_ids, with: { bar: [{ foospec: false }] }).first
+      expect(u.bar).to eq(["bar", Set[], [{ foospec: false }], ["not foo"]])
+      expect(u.instance_variable_defined?(:@foo)).to be(false)
+    end
+
+    it "requires foo if foospec is given" do
+      u = user_class.list(raw_user_ids, with: { bar: { foospec: { payload_for_foo: :something } } }).first
+      expect(u.bar).to eq(["bar", Set[:foo], [{ foospec: { payload_for_foo: :something } }], ["foo", [{ payload_for_foo: :something }]]])
+      expect(u.instance_variable_defined?(:@foo)).to be(true)
+    end
+  end
+
+  describe "subdependency passthrough" do
+    before do
+      user_class.module_eval do
+        computed def foo
+          ["foo", current_subdeps]
+        end
+
+        dependency foo: [-> (subdeps) { subdeps }, { fixed_payload: :egg }]
+        computed def bar
+          f = current_deps.include?(:foo) ? foo : ["not foo"]
+          ["bar", current_deps, current_subdeps, f]
+        end
+      end
+    end
+
+    it "passes subdeps through to foo" do
+      u = user_class.list(raw_user_ids, with: { bar: { payload_for_foo: :something } }).first
+      expect(u.bar).to eq(["bar", Set[:foo], [{ payload_for_foo: :something }], ["foo", [{ payload_for_foo: :something }, { fixed_payload: :egg }]]])
+      expect(u.instance_variable_defined?(:@foo)).to be(true)
+    end
+  end
+
   describe "cyclic dependency" do
     before do
       user_class.module_eval do
