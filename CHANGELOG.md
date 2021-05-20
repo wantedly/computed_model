@@ -29,6 +29,7 @@
 - Misc
   - Collect coverage https://github.com/wantedly/computed_model/pull/12 https://github.com/wantedly/computed_model/pull/16
   - Refactor tests https://github.com/wantedly/computed_model/pull/10 https://github.com/wantedly/computed_model/pull/15
+  - Add tests https://github.com/wantedly/computed_model/pull/27
 
 
 ## 0.2.2

@@ -89,7 +89,7 @@ module ComputedModel::Model
         public meth_name
       elsif protected_method_defined?(meth_name_orig)
         protected meth_name
-      elsif private_method_defined?(meth_name_orig)
+      else # elsif private_method_defined?(meth_name_orig)
         private meth_name
       end
 
@@ -175,7 +175,7 @@ module ComputedModel::Model
       end
 
       define_method(meth_name) do
-        raise NotLoaded, "the field #{meth_name} is not loaded" unless instance_variable_defined?(var_name)
+        raise ComputedModel::NotLoaded, "the field #{meth_name} is not loaded" unless instance_variable_defined?(var_name)
 
         __computed_model_check_availability(meth_name)
         instance_variable_get(var_name)
@@ -224,7 +224,7 @@ module ComputedModel::Model
       end
 
       define_method(meth_name) do
-        raise NotLoaded, "the field #{meth_name} is not loaded" unless instance_variable_defined?(var_name)
+        raise ComputedModel::NotLoaded, "the field #{meth_name} is not loaded" unless instance_variable_defined?(var_name)
 
         __computed_model_check_availability(meth_name)
         instance_variable_get(var_name)
@@ -253,15 +253,13 @@ module ComputedModel::Model
             obj.instance_variable_set(:@__computed_model_plan, plan)
             obj.instance_variable_set(:@__computed_model_stack, [dummy_toplevel_node])
           end
-        when :computed
-          objs.each do |obj|
-            obj.send(:"compute_#{node.name}")
-          end
         when :loaded
           loader_name = :"__computed_model_load_#{node.name}"
           send(loader_name, objs, ComputedModel.filter_subdeps(node.subdeps), **options)
-        else
-          raise "No dependency info for #{self}##{node.name}"
+        else # when :computed
+          objs.each do |obj|
+            obj.send(:"compute_#{node.name}")
+          end
         end
       end
 

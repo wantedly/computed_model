@@ -63,6 +63,21 @@ RSpec.describe ComputedModel do
     end
   end
 
+  describe "incorrect define_primary_loader implementation" do
+    before do
+      user_class.module_eval do
+        def initialize(raw_user)
+          @id = raw_user.id
+          # @raw_user = raw_user
+        end
+      end
+    end
+    it "raises NotLoaded" do
+      u = user_class.list(raw_user_ids, with: [:raw_user]).first
+      expect { u.raw_user }.to raise_error(ComputedModel::NotLoaded, 'the field raw_user is not loaded')
+    end
+  end
+
   describe "subdependency mapping" do
     before do
       user_class.module_eval do
@@ -411,6 +426,30 @@ RSpec.describe ComputedModel do
       end
       u = user_class.list(raw_user_ids, with: [:foo]).first
       expect(u.foo).to eq("foo")
+    end
+  end
+
+  describe "loader description" do
+    describe "missing block" do
+      it "raises an error" do
+        expect {
+          user_class.module_eval do
+            define_loader :foo, key: -> { id }
+          end
+        }.to raise_error(ArgumentError, "No block given")
+      end
+    end
+  end
+
+  describe "primary loader description" do
+    describe "missing block" do
+      it "raises an error" do
+        expect {
+          user_class.module_eval do
+            define_primary_loader :foo
+          end
+        }.to raise_error(ArgumentError, "No block given")
+      end
     end
   end
 
