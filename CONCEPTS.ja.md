@@ -191,10 +191,130 @@ end
 class User
   dependency(
     :blog_articles,
-    value: -> (subdeps) { subdeps.normalized[:image].any? }
+    # image 下位フィールドセレクタがあるときのみ image_permissions フィールド を読み込む
+    image_permissions: -> (subdeps) { subdeps.normalized[:image].any? }
   )
   computed def filtered_blog_articles
-
+    if current_subdeps.normalized[:image].any?
+      # ...
+    end
+    # ...
   end
 end
 ```
+
+### 下位フィールドセレクタのパススルー
+
+下位フィールドセレクタを別のフィールドにそのまま流すことができます。
+
+```ruby
+class User
+  dependency(
+    blog_articles: -> (subdeps) { subdeps }
+  )
+  computed def filtered_blog_articles
+    if current_subdeps.normalized[:image].any?
+      # ...
+    end
+    # ...
+  end
+end
+```
+
+### 下位フィールドセレクタのマッピング
+
+下位フィールドセレクタを加工して別のフィールドに流すこともできます。
+
+```ruby
+class User
+  dependency(
+    # blog_articles を必ずロードするが、
+    # 特に下位フィールドセレクタが blog_articles キーを持つ場合はそれを blog_articles の下位フィールドセレクタとして流す
+    blog_articles: [true, -> (subdeps) { subdeps.normalized[:blog_articles] }],
+    # wiki_articles を必ずロードするが、
+    # 特に下位フィールドセレクタが wiki_articles キーを持つ場合はそれを wiki_articles の下位フィールドセレクタとして流す
+    wiki_articles: [true, -> (subdeps) { subdeps.normalized[:wiki_articles] }]
+  )
+  computed def articles
+    (blog_articles + wiki_articles).sort_by { |article| article.created_at }.reverse
+  end
+end
+```
+
+### 依存関係のフォーマット
+
+`dependency` には0個以上の引数を渡すことができます。
+これらは内部で配列に積まれていき、直後の `computed def` や `define_loader` によって消費されます。
+そのため、以下は同じ意味です。
+
+```ruby
+dependency :profile
+dependency :preference
+computed def display_name; ...; end
+```
+
+```ruby
+dependency :profile, :preference
+computed def display_name; ...; end
+```
+
+渡された配列は `ComputedModel.normalize_dependencies` によってハッシュに正規化されます。これは以下のようなルールになっています。
+
+- Symbolの場合はそのシンボルをキーとするHashとみなす。 (`:foo` → `{ foo: [true] }`)
+- Hashの場合は中の値を以下のように変換する。
+  - 空配列の場合は `[true]` に変換する。 (`{ foo: [] }` → `{ foo: [true] }`)
+  - 配列以外の場合はそれを単独で含む配列に変換する。 (`{ foo: :bar }` → `{ foo: [:bar] }`)
+  - 空以外の配列の場合はそのまま。
+- 配列の場合は個々の要素を上記のルールに従って変換したあと、ハッシュのキーをマージする。ハッシュの値は配列なのでそのまま結合される。
+  - `[:foo, :bar]` → `{ foo: [true], bar: [true] }`
+  - `[{ foo: :foo }, { foo: :bar }]` → `{ foo: [:foo, :bar] }`
+
+このようにして得られたハッシュのキーは依存するフィールド名、値は下位フィールドセレクタとして解釈されます。
+
+下位フィールドセレクタは以下のように解釈します。
+
+- Procなど `#call` を持つオブジェクトがある場合、引数に `subdeps` を渡して実行する。
+  - 配列が返ってきた場合はフラットに展開する。 (`{ foo: [-> { [:bar, :baz] }] }` → `{ foo: [:bar, :baz] }`)
+  - それ以外の値が返ってきた場合はその要素で置き換える。 (`{ foo: [-> { :bar }] }` → `{ foo: [:bar] }`)
+- Procの置き換え後、真値 (nilとfalse以外の値) が1つ以上含まれているかを判定する。
+  - 真値がひとつもない場合は、条件つき依存の判定が偽になったとみなし、その依存関係は使わない。
+  - それ以外の場合は依存関係を使う。Procの置き換え後に得られた下位フィールドセレクタはそのまま依存先フィールドに送られる。
+
+そのため下位フィールドセレクタには通常 `true` が含まれています。特別な条件として以下の場合は取り除かれます。
+
+- `define_loader` や `define_primary_loader` のブロックに渡されるときは、下位フィールドセレクタに含まれる `nil`, `false`, `true` は
+  取り除かれます。
+- いくつかの場面では `subdeps.normalize` という特別なメソッドが使えることがあります。これは下位フィールドセレクタに含まれる
+  `nil`, `false`, `true` を取り除いたあと、 `ComputedModel.normalize_dependencies` の正規化にかけたハッシュを返します。
+
+## 継承
+
+ComputedModelで部分的にフィールドを定義したクラス (モジュール) を作り、それを継承 (インクルード) したクラスで定義を完成させることができます。
+
+```ruby
+module UserLikeConcern
+  extends ActiveSupport::Concern
+  include ComputedModel::Model
+
+  dependency :preference, :profile
+  computed def display_name
+    "#{preference.title} #{profile.name}"
+  end
+end
+
+class User
+  include UserLikeConcern
+
+  define_loader :preference, key: -> { id } do ... end
+  define_loader :profile, key: -> { id } do ... end
+end
+
+class Admin
+  include UserLikeConcern
+
+  define_loader :preference, key: -> { id } do ... end
+  define_loader :profile, key: -> { id } do ... end
+end
+```
+
+オーバーライドは正しく動かない可能性があります。 (computed def が内部的にメソッドのリネームを行っているため)
