@@ -43,6 +43,11 @@ module ComputedModel
       @nodes[node.name] = node
     end
 
+    # @return [Array<ComputedModel::DepGraph::Node>]
+    def nodes
+      @nodes.values
+    end
+
     # Preprocess the graph by topological sorting. This is a necessary step for loader planning.
     #
     # @return [ComputedModel::DepGraph::Sorted]
@@ -90,6 +95,20 @@ module ComputedModel
       load_order << name
       visiting.delete(name)
       visited.add(name)
+    end
+
+    # @param graphs [Array<ComputedModel::DepGraph>]
+    # @return [ComputedModel::DepGraph]
+    def self.merge(graphs)
+      new_graph = ComputedModel::DepGraph.new
+      nodes_by_name = graphs.flat_map(&:nodes).group_by(&:name)
+      nodes_by_name.each do |name, nodes|
+        type = nodes.first.type
+        raise ArgumentError, "Field #{name} has multiple different types" unless nodes.all? { |node| node.type == type }
+
+        new_graph << ComputedModel::DepGraph::Node.new(type, name, nodes.map { |n| n.edges.transform_values { |e| e.spec } })
+      end
+      new_graph
     end
 
     # A node in the dependency graph. That is, a field in a computed model.

@@ -67,7 +67,7 @@ module ComputedModel::Model
       meth_name_orig = :"#{meth_name}_orig"
       compute_meth_name = :"compute_#{meth_name}"
 
-      @__computed_model_graph << ComputedModel::DepGraph::Node.new(:computed, meth_name, @__computed_model_next_dependency)
+      __computed_model_graph << ComputedModel::DepGraph::Node.new(:computed, meth_name, @__computed_model_next_dependency)
       remove_instance_variable(:@__computed_model_next_dependency) if defined?(@__computed_model_next_dependency)
 
       alias_method meth_name_orig, meth_name
@@ -164,7 +164,7 @@ module ComputedModel::Model
       loader_name = :"__computed_model_load_#{meth_name}"
       writer_name = :"#{meth_name}="
 
-      @__computed_model_graph << ComputedModel::DepGraph::Node.new(:loaded, meth_name, @__computed_model_next_dependency)
+      __computed_model_graph << ComputedModel::DepGraph::Node.new(:loaded, meth_name, @__computed_model_next_dependency)
       remove_instance_variable(:@__computed_model_next_dependency) if defined?(@__computed_model_next_dependency)
       define_singleton_method(loader_name) do |objs, subdeps, **options|
         keys = objs.map { |o| o.instance_exec(&key) }
@@ -218,7 +218,7 @@ module ComputedModel::Model
       var_name = :"@#{meth_name}"
       loader_name = :"__computed_model_enumerate_#{meth_name}"
 
-      @__computed_model_graph << ComputedModel::DepGraph::Node.new(:primary, meth_name, {})
+      __computed_model_graph << ComputedModel::DepGraph::Node.new(:primary, meth_name, {})
       define_singleton_method(loader_name) do |subdeps, **options|
         block.call(subdeps, **options)
       end
@@ -280,8 +280,20 @@ module ComputedModel::Model
       nil
     end
 
+    # @return [ComputedModel::DepGraph::Sorted]
     private def __computed_model_sorted_graph
-      @__computed_model_sorted_graph ||= @__computed_model_graph.tsort
+      @__computed_model_sorted_graph ||= __computed_model_merged_graph.tsort
+    end
+
+    # @return [ComputedModel::DepGraph]
+    private def __computed_model_merged_graph
+      graphs = ancestors.reverse.map { |m| m.respond_to?(:__computed_model_graph, true) ? m.send(:__computed_model_graph) : nil }.compact
+      ComputedModel::DepGraph.merge(graphs)
+    end
+
+    # @return [ComputedModel::DepGraph]
+    private def __computed_model_graph
+      @__computed_model_graph ||= ComputedModel::DepGraph.new
     end
   end
 
@@ -304,10 +316,5 @@ module ComputedModel::Model
     return if @__computed_model_stack.last.deps.include?(name)
 
     raise ComputedModel::ForbiddenDependency, "Not a direct dependency: #{name}"
-  end
-
-  included do
-    @__computed_model_graph = ComputedModel::DepGraph.new
-    @__computed_model_sorted_graph = nil
   end
 end
