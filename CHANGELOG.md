@@ -23,6 +23,7 @@
 - Added
   - `ComputedModel::Model#verify_dependencies`
   - Loader dependency https://github.com/wantedly/computed_model/pull/28
+  - Support computed model inheritance https://github.com/wantedly/computed_model/pull/29
 - Refactored
   - Extract `DepGraph` from `Model` https://github.com/wantedly/computed_model/pull/19
   - Define loader as a singleton method https://github.com/wantedly/computed_model/pull/21
