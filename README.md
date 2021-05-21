@@ -10,6 +10,8 @@ ComputedModel is a universal batch loader which comes with a dependency-resoluti
 - Designed to be universal and datasource-independent.
   For example, you can gather data from both HTTP and ActiveRecord and return the derived one.
 
+[日本語版README](README.ja.md)
+
 ## Problems to solve
 
 As models grow, they cannot simply return the database columns as-is.

@@ -1,5 +1,7 @@
 # 基本概念と機能
 
+[English version](CONCEPTS.md)
+
 ## ラッパークラス
 
 ComputedModelは、ActiveRecordクラスなどに直接includeして使うことを(今のところ)想定していません。
