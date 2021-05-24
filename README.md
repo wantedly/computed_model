@@ -2,7 +2,7 @@
 
 ComputedModel is a universal batch loader which comes with a dependency-resolution algorithm.
 
-- Thanks to the dependency resolution, it allows you to the following trifecta at once.
+- Thanks to the dependency resolution, it allows you to the following trifecta at once, without breaking abstraction.
   - Process information gathered from datasources (such as ActiveRecord) and return the derived one.
   - Prevent N+1 problem via batch loading.
   - Load only necessary data.
