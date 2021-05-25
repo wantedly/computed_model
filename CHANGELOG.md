@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.3.0
+
 computed_model 0.3 comes with a great number of improvements, and a bunch of breaking changes.
 
 - Breaking changes

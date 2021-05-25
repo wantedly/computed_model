@@ -62,7 +62,7 @@ end
 Gemfileに以下の行を追加:
 
 ```ruby
-gem 'computed_model', '~> 0.2.2'
+gem 'computed_model', '~> 0.3.0'
 ```
 
 その後、以下を実行:

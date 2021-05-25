@@ -64,7 +64,7 @@ end
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'computed_model', '~> 0.2.2'
+gem 'computed_model', '~> 0.3.0'
 ```
 
 And then execute:
