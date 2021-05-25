@@ -12,10 +12,11 @@ RSpec.describe ComputedModel do
   let(:raw_user_ids) { [raw_user1, raw_user2, raw_user3, raw_user4].map(&:id) }
   before { raw_user3.destroy! }
 
-  let!(:raw_book1) { create(:raw_book, author_id: raw_user2.id, title: "Book One") }
-  let!(:raw_book2) { create(:raw_book, author_id: raw_user4.id, title: "Book Two") }
-  let!(:raw_book3) { create(:raw_book, author_id: raw_user2.id, title: "Book Three") }
-  let!(:raw_book4) { create(:raw_book, author_id: raw_user2.id, title: "Book Four") }
+  let!(:raw_book1) { create(:raw_book, author_id: raw_user2.id, title: "Book One",   published_at: Date.new(2020,  4, 20)) }
+  let!(:raw_book2) { create(:raw_book, author_id: raw_user4.id, title: "Book Two",   published_at: Date.new(2020,  7,  9)) }
+  let!(:raw_book3) { create(:raw_book, author_id: raw_user2.id, title: "Book Three", published_at: Date.new(2020, 10,  1)) }
+  let!(:raw_book4) { create(:raw_book, author_id: raw_user2.id, title: "Book Four",  published_at: Date.new(2021,  2, 13)) }
+  let!(:raw_book5) { create(:raw_book, author_id: raw_user2.id, title: "Book Five",  published_at: nil) }
 
   class self::Sandbox
     class User
@@ -36,11 +37,16 @@ RSpec.describe ComputedModel do
         RawUser.where(id: ids).map { |raw_user| User.new(raw_user) }
       end
 
-      define_loader :books, key: -> { id } do |keys, subdeps|
+      define_loader :books_with_unpublished, key: -> { id } do |keys, subdeps|
         Book.list(user_ids: keys, with: subdeps).group_by(&:author_id)
       end
 
       delegate_dependency :name, to: :raw_user
+
+      dependency books_with_unpublished: [:published]
+      computed def books
+        books_with_unpublished.select(&:published)
+      end
 
       dependency :name
       computed def fancy_name
@@ -68,11 +74,16 @@ RSpec.describe ComputedModel do
         bulk_load_and_compute(with, user_ids: user_ids)
       end
 
-      define_primary_loader :raw_book do |_subdeps, user_ids:, **_options|
-        RawBook.where(author_id: user_ids).map { |raw_book| Book.new(raw_book) }
+      define_primary_loader :raw_book do |subdeps, user_ids:, **_options|
+        RawBook.where(author_id: user_ids).select(:id, *subdeps).map { |raw_book| Book.new(raw_book) }
       end
 
-      delegate_dependency :title, to: :raw_book
+      delegate_dependency :title, to: :raw_book, include_subdeps: true
+
+      dependency raw_book: [:published_at]
+      computed def published
+        !!raw_book.published_at
+      end
     end
   end
 
