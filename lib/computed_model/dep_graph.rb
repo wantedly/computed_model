@@ -117,7 +117,7 @@ module ComputedModel
     #
     # @example computed node with plain dependencies
     #   Node.new(:computed, :field1, { field2: [], field3: [] })
-    # @example computed node with subdeps
+    # @example computed node with subfield selectors
     #   Node.new(:computed, :field1, { field2: [:foo, bar: []], field3: [] })
     # @example loaded and primary dependencies
     #   Node.new(:loaded, :field1, {})
@@ -152,25 +152,25 @@ module ComputedModel
     class Edge
       # @return [Symbol] the name of the dependency (not the dependent)
       attr_reader :name
-      # @return [Array] an auxiliary data called subdeps
+      # @return [Array] an auxiliary data called subfield selectors
       attr_reader :spec
 
       # @param name [Symbol] the name of the dependency (not the dependent)
-      # @param spec [Array] an auxiliary data called subdeps
+      # @param spec [Array] an auxiliary data called subfield selectors
       def initialize(name, spec)
         @name = name
         @spec = Array(spec)
       end
 
-      # @param subdeps [Array]
+      # @param subfields [Array] incoming list of subfield selectors
       # @return [Array, nil]
-      def evaluate(subdeps)
+      def evaluate(subfields)
         return @spec if @spec.all? { |specelem| !specelem.respond_to?(:call) }
 
         evaluated = []
         @spec.each do |specelem|
           if specelem.respond_to?(:call)
-            ret = specelem.call(subdeps)
+            ret = specelem.call(subfields)
             if ret.is_a?(Array)
               evaluated.push(*ret)
             else
@@ -202,41 +202,41 @@ module ComputedModel
 
       # Computes the plan for the given requirements.
       #
-      # @param deps [Array] the list of required nodes. Each dependency can optionally include subdeps hashes.
+      # @param deps [Array] the list of required nodes. Each dependency can optionally include subfields hashes.
       # @return [ComputedModel::Plan]
       #
       # @example Plain dependencies
       #   sorted.plan([:field1, :field2])
       #
-      # @example Dependencies with subdeps
+      # @example Dependencies with subfields
       #   sorted.plan([:field1, field2: { optional_field: {} }])
       def plan(deps)
         normalized = ComputedModel.normalize_dependencies(deps)
-        subdeps_hash = {}
+        subfields_hash = {}
         uses = Set[]
         plan_nodes = []
 
-        normalized.each do |name, subdeps|
+        normalized.each do |name, subfields|
           raise "No dependency info for ##{name}" unless @original[name]
 
           uses.add(name)
-          (subdeps_hash[name] ||= []).unshift(*subdeps)
+          (subfields_hash[name] ||= []).unshift(*subfields)
         end
         @nodes_in_order.each do |node|
           uses.add(node.name) if node.type == :primary
           next unless uses.include?(node.name)
 
-          node_subdeps = ComputedModel::NormalizableArray.new(subdeps_hash[node.name] || [])
+          node_subfields = ComputedModel::NormalizableArray.new(subfields_hash[node.name] || [])
           deps = Set[]
           node.edges.each_value do |edge|
-            specval = edge.evaluate(node_subdeps)
+            specval = edge.evaluate(node_subfields)
             if specval.any?
               deps.add(edge.name)
               uses.add(edge.name)
-              (subdeps_hash[edge.name] ||= []).unshift(*specval)
+              (subfields_hash[edge.name] ||= []).unshift(*specval)
             end
           end
-          plan_nodes.push(ComputedModel::Plan::Node.new(node.name, deps, node_subdeps))
+          plan_nodes.push(ComputedModel::Plan::Node.new(node.name, deps, node_subfields))
         end
         ComputedModel::Plan.new(plan_nodes.reverse, normalized.keys.to_set)
       end

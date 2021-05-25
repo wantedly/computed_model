@@ -37,7 +37,7 @@ A loaded field is a field in which we obtain values in batches.
 
 ```ruby
 class User
-  define_loader :preference, key: -> { id } do |ids, _subdeps, **|
+  define_loader :preference, key: -> { id } do |ids, _subfields, **|
     Preference.where(user_id: ids).index_by(&:user_id)
   end
 end
@@ -59,7 +59,7 @@ class User
     @raw_user = raw_user
   end
 
-  define_primary_loader :raw_user do |_subdeps, ids:, **|
+  define_primary_loader :raw_user do |_subfields, ids:, **|
     # You need to set @raw_user in User#initialize.
     RawUser.where(id: ids).map { |u| User.new(u) }
   end
@@ -125,8 +125,8 @@ Nonetheless we expect them to be used to request "subfields" as the name suggest
 
 ```ruby
 class User
-  define_loader :profile, key: -> { id } do |ids, subdeps, **|
-    Profile.preload(subdeps).where(user_id: ids).index_by(&:user_id)
+  define_loader :profile, key: -> { id } do |ids, subfields, **|
+    Profile.preload(subfields).where(user_id: ids).index_by(&:user_id)
   end
 
   # [:contact_phones] will be passed to the loader of `profile`.
@@ -158,7 +158,7 @@ class User
     bulk_load_and_compute(with, ids: nil, emails: emails)
   end
 
-  define_primary_loader :raw_user do |_subdeps, ids:, emails:, **|
+  define_primary_loader :raw_user do |_subfields, ids:, emails:, **|
     s = User.all
     s = s.where(id: ids) if ids
     s = s.where(email: emails) if emails
@@ -179,11 +179,11 @@ class User
     @current_user_id = current_user_id
   end
 
-  define_primary_loader :raw_user do |_subdeps, current_user_id:, ids:, **|
+  define_primary_loader :raw_user do |_subfields, current_user_id:, ids:, **|
     # ...
   end
 
-  define_loader :profile, key: -> { id } do |ids, _subdeps, current_user_id:, **|
+  define_loader :profile, key: -> { id } do |ids, _subfields, current_user_id:, **|
     # ...
   end
 end
@@ -198,14 +198,15 @@ You can configure dynamic dependencies by specifying Procs as subfield selectors
 Dependencies which are conditionally enabled based on incoming subfield selectors:
 
 ```ruby
+
 class User
   dependency(
     :blog_articles,
     # Load image_permissions only when it receives `image` subfield selector.
-    image_permissions: -> (subdeps) { subdeps.normalized[:image].any? }
+    image_permissions: -> (subfields) { subfields.normalized[:image].any? }
   )
   computed def filtered_blog_articles
-    if current_subdeps.normalized[:image].any?
+    if current_subfields.normalized[:image].any?
       # ...
     end
     # ...
@@ -218,12 +219,13 @@ end
 Passing through incoming subfield selectors to another field:
 
 ```ruby
+
 class User
   dependency(
-    blog_articles: -> (subdeps) { subdeps }
+    blog_articles: -> (subfields) { subfields }
   )
   computed def filtered_blog_articles
-    if current_subdeps.normalized[:image].any?
+    if current_subfields.normalized[:image].any?
       # ...
     end
     # ...
@@ -240,10 +242,10 @@ class User
   dependency(
     # Always load blog_articles, but
     # if the incoming subfield selectors contain `blog_articles`, pass them down to the dependency.
-    blog_articles: [true, -> (subdeps) { subdeps.normalized[:blog_articles] }],
+    blog_articles: [true, -> (subfields) { subfields.normalized[:blog_articles] }],
     # Always load wiki_articles, but
     # if the incoming subfield selectors contain `wiki_articles`, pass them down to the dependency.
-    wiki_articles: [true, -> (subdeps) { subdeps.normalized[:wiki_articles] }]
+    wiki_articles: [true, -> (subfields) { subfields.normalized[:wiki_articles] }]
   )
   computed def articles
     (blog_articles + wiki_articles).sort_by { |article| article.created_at }.reverse
@@ -283,7 +285,7 @@ We interpret the resulting hash as a dictionary from a field name (dependency na
 
 Each subfield selector is interpreted as below:
 
-- If it contains `#call`able objects (such as Proc), call them with `subdeps` as their argument.
+- If it contains `#call`able objects (such as Proc), call them with `subfields` (incoming subfield selectors) as their argument.
   - Expand the result if it's an Array. (`{ foo: [-> { [:bar, :baz] }] }` → `{ foo: [:bar, :baz] }`)
   - Otherwise push the result. (`{ foo: [-> { :bar }] }` → `{ foo: [:bar] }`)
 - After Proc substitution, check if it contains any truthy value (value other than `nil` or `false`).
@@ -293,7 +295,7 @@ Each subfield selector is interpreted as below:
 For that reason, in most cases subfield selectors contain `true`. As a special case we remove them in the following cases:
 
 - We'll remove `nil`, `false`, `true` from the subfield selectors before passed to a `define_loader` or `define_primary_loader` block.
-- In certain cases you can use `subdeps.normalize` to get a hash from the subfield selectors array. This is basically `ComputedModel.normalize_dependencies` but `nil`, `false`, `true` will be removed as part of preprocessing.
+- In certain cases you can use `subfields.normalize` to get a hash from the subfield selectors array. This is basically `ComputedModel.normalize_dependencies` but `nil`, `false`, `true` will be removed as part of preprocessing.
 
 ## Inheritance
 

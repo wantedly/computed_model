@@ -43,13 +43,14 @@ See [Migration-0.3.md](Migration-0.3.md) for migration.
 Previously, subdeps are only useful for loaded fields and primary fields. Now computed fields can make use of subdeps!
 
 ```ruby
+
 class User
   # Delegate subdeps
   dependency(
     blog_articles: -> (subdeps) { subdeps }
   )
   computed def filtered_blog_articles
-    if current_subdeps.normalized[:image].any?
+    if current_subfields.normalized[:image].any?
       # ...
     end
     # ...

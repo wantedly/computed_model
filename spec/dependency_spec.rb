@@ -30,7 +30,7 @@ RSpec.describe ComputedModel do
         bulk_load_and_compute(with, ids: ids)
       end
 
-      define_primary_loader :raw_user do |_subdeps, ids:, **_options|
+      define_primary_loader :raw_user do |_subfields, ids:, **_options|
         RawUser.where(id: ids).map { |raw_user| self.new(raw_user) }
       end
     end
@@ -42,10 +42,10 @@ RSpec.describe ComputedModel do
       user_class.module_eval do
         computed def foo; "foo"; end
 
-        dependency foo: -> (subdeps) { subdeps.normalized[:require_foo]&.any? }
+        dependency foo: -> (subfields) { subfields.normalized[:require_foo]&.any? }
         computed def bar
           f = current_deps.include?(:foo) ? foo : "not foo"
-          ["bar", current_deps, current_subdeps, f]
+          ["bar", current_deps, current_subfields, f]
         end
       end
     end
@@ -78,17 +78,17 @@ RSpec.describe ComputedModel do
     end
   end
 
-  describe "subdependency mapping" do
+  describe "subfield selectors mapping" do
     before do
       user_class.module_eval do
         computed def foo
-          ["foo", current_subdeps]
+          ["foo", current_subfields]
         end
 
-        dependency foo: -> (subdeps) { subdeps.normalized[:foospec] }
+        dependency foo: -> (subfields) { subfields.normalized[:foospec] }
         computed def bar
           f = current_deps.include?(:foo) ? foo : ["not foo"]
-          ["bar", current_deps, current_subdeps, f]
+          ["bar", current_deps, current_subfields, f]
         end
       end
     end
@@ -112,22 +112,22 @@ RSpec.describe ComputedModel do
     end
   end
 
-  describe "subdependency passthrough" do
+  describe "subfield selectors passthrough" do
     before do
       user_class.module_eval do
         computed def foo
-          ["foo", current_subdeps]
+          ["foo", current_subfields]
         end
 
-        dependency foo: [-> (subdeps) { subdeps }, { fixed_payload: :egg }]
+        dependency foo: [-> (subfields) { subfields }, { fixed_payload: :egg }]
         computed def bar
           f = current_deps.include?(:foo) ? foo : ["not foo"]
-          ["bar", current_deps, current_subdeps, f]
+          ["bar", current_deps, current_subfields, f]
         end
       end
     end
 
-    it "passes subdeps through to foo" do
+    it "passes subfields through to foo" do
       u = user_class.list(raw_user_ids, with: { bar: { payload_for_foo: :something } }).first
       expect(u.bar).to eq(["bar", Set[:foo], [{ payload_for_foo: :something }], ["foo", [{ payload_for_foo: :something }, { fixed_payload: :egg }]]])
       expect(u.instance_variable_defined?(:@foo)).to be(true)
@@ -487,7 +487,7 @@ RSpec.describe ComputedModel do
         delegate_dependency :name, to: :raw_user
 
         dependency :name
-        define_loader :fancy_name, key: -> { self } do |objs, _subdeps|
+        define_loader :fancy_name, key: -> { self } do |objs, _subfields|
           objs.map { |obj| [obj, "#{obj.name}-san"] }.to_h
         end
       end

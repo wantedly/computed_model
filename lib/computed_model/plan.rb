@@ -32,16 +32,16 @@ module ComputedModel
       attr_reader :name
       # @return [Set<Symbol>] set of dependency names
       attr_reader :deps
-      # @return [ComputedModel::NormalizableArray] a payload given to the loader
-      attr_reader :subdeps
+      # @return [ComputedModel::NormalizableArray] subfield selectors, payloads sent to the dependency
+      attr_reader :subfields
 
       # @param name [Symbol] field name
       # @param deps [Set<Symbol>] set of dependency names
-      # @param subdeps [ComputedModel::NormalizableArray] a payload given to the loader
-      def initialize(name, deps, subdeps)
+      # @param subfields [ComputedModel::NormalizableArray] subfield selectors, payloads sent to the dependency
+      def initialize(name, deps, subfields)
         @name = name
         @deps = deps
-        @subdeps = subdeps
+        @subfields = subfields
       end
     end
   end

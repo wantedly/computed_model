@@ -53,7 +53,7 @@ RSpec.describe ComputedModel::DepGraph do
       expect(plan.load_order.map(&:name)).to eq([:field4, :field2, :field1])
     end
 
-    it 'collects subdeps_hash' do
+    it 'collects the hash of subfield selectors' do
       graph = ComputedModel::DepGraph.new
       graph << ComputedModel::DepGraph::Node.new(:computed, :field1, { field2: { a: 42 } })
       graph << ComputedModel::DepGraph::Node.new(:loaded, :field2, {})
@@ -62,13 +62,13 @@ RSpec.describe ComputedModel::DepGraph do
       graph << ComputedModel::DepGraph::Node.new(:computed, :field5, { field2: { c: 420 } })
       plan = graph.tsort.plan([:field1, :field5])
       expect(plan.load_order.map(&:name)).to eq([:field4, :field2, :field1, :field5])
-      subdeps_expect = {
+      subfields_expect = {
         field4: [],
         field2: [{ a: 42 }, { c: 420 }],
         field1: [true],
         field5: [true]
       }
-      expect(plan.load_order.map { |n| [n.name, n.subdeps] }.to_h).to eq(subdeps_expect)
+      expect(plan.load_order.map { |n| [n.name, n.subfields] }.to_h).to eq(subfields_expect)
     end
 
     it 'collects deps' do
