@@ -4,6 +4,8 @@ require 'set'
 
 module ComputedModel
   # A plan for batch loading. Created by {ComputedModel::DepGraph::Sorted#plan}.
+  #
+  # @api private
   class Plan
     # @return [Array<ComputedModel::Plan::Node>] fields in load order
     attr_reader :load_order

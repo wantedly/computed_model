@@ -6,6 +6,8 @@ module ComputedModel
   # A dependency graph representation used within ComputedModel::Model.
   # Usually you don't need to use this class directly.
   #
+  # @api private
+  #
   # @example
   #   graph = ComputedModel::DepGraph.new
   #   graph << ComputedModel::DepGraph::Node.new(:computed, :foo, { bar: [] })
