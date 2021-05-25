@@ -34,6 +34,7 @@ computed_model 0.3 comes with a great number of improvements, and a bunch of bre
   - Collect coverage https://github.com/wantedly/computed_model/pull/12 https://github.com/wantedly/computed_model/pull/16
   - Refactor tests https://github.com/wantedly/computed_model/pull/10 https://github.com/wantedly/computed_model/pull/15
   - Add tests https://github.com/wantedly/computed_model/pull/27
+  - Add documentation https://github.com/wantedly/computed_model/pull/30
 
 See [Migration-0.3.md](Migration-0.3.md) for migration.
 
