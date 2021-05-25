@@ -1,21 +1,19 @@
 # ComputedModel
 
-ComputedModel is a universal batch loader which comes with a dependency-resolution algorithm.
+ComputedModelは依存解決アルゴリズムを備えた普遍的なバッチローダーです。
 
-- Thanks to the dependency resolution, it allows you to the following trifecta at once, without breaking abstraction.
-  - Process information gathered from datasources (such as ActiveRecord) and return the derived one.
-  - Prevent N+1 problem via batch loading.
-  - Load only necessary data.
-- Can load data from multiple datasources.
-- Designed to be universal and datasource-independent.
-  For example, you can gather data from both HTTP and ActiveRecord and return the derived one.
+- 依存解決アルゴリズムの恩恵により、抽象化を損なわずに以下の3つを両立させることができます。
+  - ActiveRecord等から読み込んだデータを加工して提供する。
+  - ActiveRecord等からのデータの読み込みを一括で行うことでN+1問題を防ぐ。
+  - 必要なデータだけを読み込む。
+- 複数のデータソースからの読み込みにも対応。
+- データソースに依存しない普遍的な設計。HTTPで取得した情報とActiveRecordから取得した情報の両方を使う、といったこともできます。
 
-[日本語版README](README.ja.md)
+[English version](README.md)
 
-## Problems to solve
+## 解決したい問題
 
-As models grow, they cannot simply return the database columns as-is.
-Instead, we want to process information obtained from the database and return the derived value.
+モデルが複雑化してくると、単にデータベースから取得した値を返すだけではなく、加工した値を返したくなることがあります。
 
 ```ruby
 class User < ApplicationRecord
@@ -28,23 +26,23 @@ class User < ApplicationRecord
 end
 ```
 
-However, it can lead to N+1 without care.
+ところがこれをそのまま使うと N+1 問題が発生することがあります。
 
 ```ruby
-# N+1 problem!
+# N+1 問題!
 User.where(id: friend_ids).map(&:display_name)
 ```
 
-To solve the N+1 problem, we need to enumerate dependencies of `#display_name` and preload them.
+N+1問題を解決するには、 `#display_name` が何に依存していたかを調べ、それをpreloadしておく必要があります。
 
 ```ruby
 User.where(id: friend_ids).preload(:preference, :profile).map(&:display_name)
-#                                  ^^^^^^^^^^^^^^^^^^^^^ breaks abstraction of display_name
+#                                  ^^^^^^^^^^^^^^^^^^^^^ display_name の抽象化が漏れてしまう
 ```
 
-This partially defeats the purpose of `#display_name`'s abstraction.
+これではせっかく `#display_name` を抽象化した意味が半減してしまいます。
 
-Computed solves the problem by connection the dependency-resolution to the batch loader.
+ComputedModelは依存解決アルゴリズムをバッチローダーに接続することでこの問題を解消します。
 
 ```ruby
 class User
@@ -59,28 +57,28 @@ class User
 end
 ```
 
-## Installation
+## インストール
 
-Add this line to your application's Gemfile:
+Gemfileに以下の行を追加:
 
 ```ruby
 gem 'computed_model', '~> 0.2.2'
 ```
 
-And then execute:
+その後、以下を実行:
 
     $ bundle
 
-Or install it yourself as:
+または直接インストール:
 
     $ gem install computed_model
 
-## Working example
+## 動かせるサンプルコード
 
 ```ruby
 require 'computed_model'
 
-# Consider them external sources (ActiveRecord or resources obtained via HTTP)
+# この2つを外部から取得したデータとみなす (ActiveRecordやHTTPで取得したリソース)
 RawUser = Struct.new(:id, :name, :title)
 Preference = Struct.new(:user_id, :name_public)
 
@@ -98,7 +96,7 @@ class User
   end
 
   define_primary_loader :raw_user do |_subdeps, ids:, **|
-    # In ActiveRecord:
+    # ActiveRecordの場合:
     # raw_users = RawUser.where(id: ids).to_a
     raw_users = [
       RawUser.new(1, "Tanaka Taro", "Mr. "),
@@ -108,7 +106,7 @@ class User
   end
 
   define_loader :preference, key: -> { id } do |user_ids, _subdeps, **|
-    # In ActiveRecord:
+    # ActiveRecordの場合:
     # Preference.where(user_id: user_ids).index_by(&:user_id)
     {
       1 => Preference.new(1, true),
@@ -131,7 +129,7 @@ class User
   end
 end
 
-# You can only access the field you requested ahead of time
+# あらかじめ要求したフィールドにだけアクセス可能
 users = User.list([1, 2], with: [:public_name_with_title])
 users.map(&:public_name_with_title) # => ["Mr. Tanaka Taro", "Dr. Anonymous"]
 users.map(&:public_name) # => error (ForbiddenDependency)
@@ -140,14 +138,14 @@ users = User.list([1, 2], with: [:public_name_with_title, :public_name])
 users.map(&:public_name_with_title) # => ["Mr. Tanaka Taro", "Dr. Anonymous"]
 users.map(&:public_name) # => ["Tanaka Taro", "Anonymous"]
 
-# In this case, preference will not be loaded.
+# 次のような場合は preference は読み込まれない。
 users = User.list([1, 2], with: [:title])
 users.map(&:title) # => ["Mr. ", "Dr. "]
 ```
 
-## Next read
+## 次に読むもの
 
-- [Basic concepts and features](CONCEPTS.md)
+- [基本概念と機能](CONCEPTS.ja.md)
 
 ## License
 

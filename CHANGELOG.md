@@ -1,5 +1,7 @@
 ## Unreleased
 
+computed_model 0.3 comes with a great number of improvements, and a bunch of breaking changes.
+
 - Breaking changes
   - `include ComputedModel` is now `include ComputedModel::Model`.
   - Indirect dependencies are now rejected.
@@ -32,7 +34,73 @@
   - Collect coverage https://github.com/wantedly/computed_model/pull/12 https://github.com/wantedly/computed_model/pull/16
   - Refactor tests https://github.com/wantedly/computed_model/pull/10 https://github.com/wantedly/computed_model/pull/15
   - Add tests https://github.com/wantedly/computed_model/pull/27
+  - Add documentation https://github.com/wantedly/computed_model/pull/30
 
+See [Migration-0.3.md](Migration-0.3.md) for migration.
+
+### New feature: dynamic dependencies
+
+Previously, subdeps are only useful for loaded fields and primary fields. Now computed fields can make use of subdeps!
+
+```ruby
+class User
+  # Delegate subdeps
+  dependency(
+    blog_articles: -> (subdeps) { subdeps }
+  )
+  computed def filtered_blog_articles
+    if current_subdeps.normalized[:image].any?
+      # ...
+    end
+    # ...
+  end
+end
+```
+
+See [CONCEPTS.md](CONCEPTS.md) for more usages.
+
+### New feature: loader dependency
+
+You can specify dependency from a loaded field.
+
+```ruby
+class User
+  dependency :raw_user  # dependency of :raw_books
+  define_loader :raw_books, key: -> { id } do |subdeps, **|
+    # ...
+  end
+end
+```
+
+### New feature: computed model inheritance
+
+Now you can reuse computed model definitions via inheritance.
+
+```ruby
+module UserLikeConcern
+  extends ActiveSupport::Concern
+  include ComputedModel::Model
+
+  dependency :preference, :profile
+  computed def display_name
+    "#{preference.title} #{profile.name}"
+  end
+end
+
+class User
+  include UserLikeConcern
+
+  define_loader :preference, key: -> { id } do ... end
+  define_loader :profile, key: -> { id } do ... end
+end
+
+class Admin
+  include UserLikeConcern
+
+  define_loader :preference, key: -> { id } do ... end
+  define_loader :profile, key: -> { id } do ... end
+end
+```
 
 ## 0.2.2
 

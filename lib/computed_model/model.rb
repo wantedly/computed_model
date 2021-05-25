@@ -2,38 +2,105 @@
 
 require 'active_support/concern'
 
-# A mixin for batch-loadable compound models.
+# A mixin for batch-loadable compound models. This is the main API of ComputedModel.
 #
-# @example typical structure of a computed model
+# See {ComputedModel::Model::ClassMethods} for methods you can use in the including classes.
+#
+# @example
+#   require 'computed_model'
+#
+#   # Consider them external sources (ActiveRecord or resources obtained via HTTP)
+#   RawUser = Struct.new(:id, :name, :title)
+#   Preference = Struct.new(:user_id, :name_public)
+#
 #   class User
 #     include ComputedModel::Model
 #
 #     attr_reader :id
-#     def initialize(id)
-#       @id = id
+#     def initialize(raw_user)
+#       @id = raw_user.id
+#       @raw_user = raw_user
 #     end
 #
-#     define_loader do ... end
+#     def self.list(ids, with:)
+#       bulk_load_and_compute(Array(with), ids: ids)
+#     end
 #
-#     dependency :foo, :bar
-#     computed def something ... end
+#     define_primary_loader :raw_user do |_subdeps, ids:, **|
+#       # In ActiveRecord:
+#       # raw_users = RawUser.where(id: ids).to_a
+#       raw_users = [
+#         RawUser.new(1, "Tanaka Taro", "Mr. "),
+#         RawUser.new(2, "Yamada Hanako", "Dr. "),
+#       ].filter { |u| ids.include?(u.id) }
+#       raw_users.map { |u| User.new(u) }
+#     end
+#
+#     define_loader :preference, key: -> { id } do |user_ids, _subdeps, **|
+#       # In ActiveRecord:
+#       # Preference.where(user_id: user_ids).index_by(&:user_id)
+#       {
+#         1 => Preference.new(1, true),
+#         2 => Preference.new(2, false),
+#       }.filter { |k, _v| user_ids.include?(k) }
+#     end
+#
+#     delegate_dependency :name, to: :raw_user
+#     delegate_dependency :title, to: :raw_user
+#     delegate_dependency :name_public, to: :preference
+#
+#     dependency :name, :name_public
+#     computed def public_name
+#       name_public ? name : "Anonymous"
+#     end
+#
+#     dependency :public_name, :title
+#     computed def public_name_with_title
+#       "#{title}#{public_name}"
+#     end
 #   end
+#
+#   # You can only access the field you requested ahead of time
+#   users = User.list([1, 2], with: [:public_name_with_title])
+#   users.map(&:public_name_with_title) # => ["Mr. Tanaka Taro", "Dr. Anonymous"]
+#   users.map(&:public_name) # => error (ForbiddenDependency)
+#
+#   users = User.list([1, 2], with: [:public_name_with_title, :public_name])
+#   users.map(&:public_name_with_title) # => ["Mr. Tanaka Taro", "Dr. Anonymous"]
+#   users.map(&:public_name) # => ["Tanaka Taro", "Anonymous"]
+#
+#   # In this case, preference will not be loaded.
+#   users = User.list([1, 2], with: [:title])
+#   users.map(&:title) # => ["Mr. ", "Dr. "]
+
 module ComputedModel::Model
   extend ActiveSupport::Concern
 
-  # A set of class methods for {ComputedModel}. Automatically included to the
+  # A set of class methods for {ComputedModel::Model}. Automatically included to the
   # singleton class when you include {ComputedModel::Model}.
+  #
+  # See {ComputedModel::Model} for examples.
   module ClassMethods
-    # Declares the dependency of a computed attribute. See {#computed} too.
+    # Declares the dependency of a computed field.
+    # Normally a call to this method will be followed by a call to {#computed} (or {#define_loader}).
     #
-    # @param deps [Array<Symbol, Hash{Symbol=>Array}>]
-    #   Dependency description. If a symbol `:foo` is given,
-    #   it's interpreted as `{ foo: [] }`.
-    #   When the same symbol occurs multiple times, the array is concatenated.
-    #   The contents of the array (called "sub-dependency") is treated opaquely
-    #   by the `computed_model` gem. It is up to the user to design the format
-    #   of sub-dependencies.
+    # @param deps [Array<Symbol, Hash{Symbol=>Array, Object}>]
+    #   Dependency list. Most simply an array of Symbols (field names).
+    #
+    #   It also accepts Hashes. In this case, the keys of the hashes are field names.
+    #   The values are called subfield selectors.
+    #
+    #   Subfield selector is one of the following:
+    #
+    #   - nil, true, or false (constant condition)
+    #   - `#call`able objects accepting one argument (dynamic selector)
+    #   - other objects (static selector)
+    #
+    #   Multiple subfield selectors can be specified at once as an array.
+    #
+    #   See CONCEPTS.md for the more detailed description of dependency formats.
     # @return [void]
+    # @raise [RuntimeError] if the dependency list contains values other than Symbol or Hash
     #
     # @example declaring dependencies
     #   dependency :user, :user_external_resource
@@ -46,18 +113,24 @@ module ComputedModel::Model
     #   computed def something
     #     # Use user and user_external_resource ...
     #   end
+    #
+    # @example declaring dynamic dependencies
+    #   dependency user: -> (subdeps) { "..." }
+    #   computed def something
+    #     # Use user ...
+    #   end
     def dependency(*deps)
       @__computed_model_next_dependency ||= []
       @__computed_model_next_dependency.push(*deps)
     end
 
-    # Declares a computed attribute. See {#dependency} too.
+    # Declares a computed field. Normally it follows a call to {#dependency}.
     #
-    # @param meth_name [Symbol] a method name to promote to a computed attribute.
+    # @param meth_name [Symbol] a method name to promote to a computed field.
     #   Typically used in the form of `computed def ...`.
-    # @return [Symbol] passes through the argument.
+    # @return [Symbol] the first argument as-is.
     #
-    # @example define a field which is calculated from loaded models
+    # @example define a field which is calculated from other fields
     #   dependency :user, :user_external_resource
     #   computed def something
     #     # Use user and user_external_resource ...
@@ -96,15 +169,15 @@ module ComputedModel::Model
       meth_name
     end
 
-    # A shorthand for simple computed attributes.
+    # A shorthand for simple computed field.
     #
     # Use {#computed} for more complex definition.
     #
     # @param methods [Array<Symbol>] method names to delegate
-    # @param to [Symbol] which attribute to delegate the methods to.
+    # @param to [Symbol] which field to delegate the methods to.
     #   This parameter is used for the dependency declaration too.
     # @param allow_nil [nil, Boolean] If `true`,
-    #   nil receivers are is ignored, and nil is returned instead.
+    #   nil receivers are ignored, and nil is returned instead.
     # @param prefix [nil, Symbol] A prefix for the delegating method name.
     # @param include_subdeps [nil, Boolean] If `true`,
     #   sub-dependencies are also included.
@@ -137,21 +210,28 @@ module ComputedModel::Model
       end
     end
 
-    # Declares a loaded attribute. See {#dependency} and {#define_primary_loader} too.
+    # Declares a loaded field. See {#dependency} and {#define_primary_loader} too.
     #
     # `define_loader :foo do ... end` generates a reader `foo` and a writer `foo=`.
-    # The writer is only meant to be used in the loader.
+    # The writer only exists for historical reasons.
     #
-    # The responsibility of loader is to call `foo=` for all the given objects.
+    # The block passed to `define_loader` is called a loader.
+    # Loader should return a hash containing field values.
     #
-    # @param meth_name [Symbol] the name of the loaded attribute.
-    # @param key [Proc] The proc to collect keys.
+    # - The keys of the hash must match `record.instance_exec(&key)`.
+    # - The values of the hash represents the field values.
+    #
+    # @param meth_name [Symbol] the name of the loaded field.
+    # @param key [Proc] The proc to collect keys. In the proc, `self` evaluates to the record instance.
+    #   Typically `-> { id }`.
     # @return [void]
+    # @raise [ArgumentError] if no block is given
     # @yield [keys, subdeps, **options]
-    # @yieldparam objects [Array] The ids of the loaded attributes.
+    # @yieldparam keys [Array] the array of keys.
     # @yieldparam subdeps [Hash] sub-dependencies
-    # @yieldparam options [Hash] A verbatim copy of what is passed to {#bulk_load_and_compute}.
-    # @yieldreturn [Hash]
+    # @yieldparam options [Hash] the batch-loading parameters.
+    #   The keyword arguments to {#bulk_load_and_compute} will be passed down here as-is.
+    # @yieldreturn [Hash] a hash containing field values.
     #
     # @example define a loader for ActiveRecord-based models
     #   define_loader :user_aux_data, key: -> { id } do |user_ids, subdeps, **options|
@@ -180,35 +260,55 @@ module ComputedModel::Model
         __computed_model_check_availability(meth_name)
         instance_variable_get(var_name)
       end
+      # TODO: remove writer?
       attr_writer meth_name
     end
 
-    # Declares a primary attribute. See {#define_loader} and {#dependency} too.
+    # Declares a primary field. See {#define_loader} and {#dependency} too.
+    # ComputedModel should have exactly one primary field.
     #
     # `define_primary_loader :foo do ... end` generates a reader `foo` and
     # a writer `foo=`.
-    # The writer is only meant to be used in the loader.
+    # The writer only exists for historical reasons.
     #
-    # The responsibility of the primary loader is to list up all the relevant
-    # primary models, and initialize instances of the subclass of ComputedModel
-    # with `@foo` set to the primary model which is just being found.
+    # The block passed to `define_loader` is called a primary loader.
+    # The primary loader's responsibility is batch loading + enumeration (search).
+    # In contrast to {#define_loader}, where a hash of field values are returned,
+    # the primary loader should return an array of record objects.
     #
-    # @param meth_name [Symbol] the name of the loaded attribute.
-    # @return [void]
-    # @yield [**options]
-    # @yieldparam options [Hash] A verbatim copy of what is passed to {#bulk_load_and_compute}.
+    # For example, if your class is `User`, the primary loader must return `Array<User>`.
+    #
+    # Additionally, the primary loader must initialize all the record objects
+    # so that the same instance variable `@#{meth_name}` is set.
+    #
+    # @param meth_name [Symbol] the name of the loaded field.
+    # @return [Array] an array of record objects.
+    # @raise [ArgumentError] if no block is given
+    # @raise [ArgumentError] if it follows a {#dependency} declaration
+    # @yield [subdeps, **options]
+    # @yieldparam subdeps [Hash] sub-dependencies
+    # @yieldparam options [Hash] the batch-loading parameters.
+    #   The keyword arguments to {#bulk_load_and_compute} will be passed down here as-is.
     # @yieldreturn [void]
     #
-    # @example define a loader for ActiveRecord-based models
-    #   define_loader :raw_user do |users, subdeps, **options|
-    #     user_ids = users.map(&:id)
-    #     raw_users = RawUser.where(id: user_ids).preload(subdeps).index_by(&:id)
-    #     users.each do |user|
-    #       # Even if it doesn't exist, you must explicitly assign nil to the field.
-    #       user.raw_user = raw_users[user.id]
+    # @example define a primary loader for ActiveRecord-based models
+    #   class User
+    #     include ComputedModel::Model
+    #
+    #     def initialize(raw_user)
+    #       # @raw_user must match the name of the primary loader
+    #       @raw_user = raw_user
+    #     end
+    #
+    #     define_primary_loader :raw_user do |subdeps, **options|
+    #       raw_users = RawUser.where(id: user_ids).preload(subdeps)
+    #       # Create User instances
+    #       raw_users.map { |raw_user| User.new(raw_user) }
     #     end
     #   end
     def define_primary_loader(meth_name, &block)
+      # TODO: The current API requires the user to initialize a specific instance variable.
+      # TODO: this design is a bit ugly.
       if defined?(@__computed_model_next_dependency)
         remove_instance_variable(:@__computed_model_next_dependency)
         raise ArgumentError, 'primary field cannot have a dependency'
@@ -229,16 +329,23 @@ module ComputedModel::Model
         __computed_model_check_availability(meth_name)
         instance_variable_get(var_name)
       end
+      # TODO: remove writer?
       attr_writer meth_name
     end
 
     # The core routine for batch-loading.
     #
-    # @param deps [Array<Symbol, Hash{Symbol=>Array}>] A set of dependencies.
-    # @param options [Hash] An arbitrary hash to pass to loaders
-    #   defined by {#define_loader}.
-    # @return [Array<Object>] The array of the requested models.
-    #   Based on what the primary loader returns.
+    # Each model class is expected to provide its own wrapper of this method. See CONCEPTS.md for examples.
+    #
+    # @param deps [Array<Symbol, Hash{Symbol=>Array, Object}>] dependency list. Same format as {#dependency}.
+    #   See {ComputedModel.normalize_dependencies} too.
+    # @param options [Hash] the batch-loading parameters.
+    #   Passed down as-is to loaders ({#define_loader}) and the primary loader ({#define_primary_loader}).
+    # @return [Array<Object>] The array of record objects, with requested fields filled in.
+    # @raise [ComputedModel::CyclicDependency] if the graph has a cycle
+    # @raise [ArgumentError] if the graph lacks a primary field
+    # @raise [RuntimeError] if the graph has multiple primary fields
+    # @raise [RuntimeError] if the graph has a dangling dependency (reference to an undefined field)
     def bulk_load_and_compute(deps, **options)
       objs = nil
       sorted = __computed_model_sorted_graph
@@ -275,6 +382,26 @@ module ComputedModel::Model
       objs
     end
 
+    # Verifies the dependency graph for errors. Useful for early error detection.
+    # It also prevents concurrency issues.
+    #
+    # Place it after all the relevant declarations. Otherwise a mysterious bug may occur.
+    #
+    # @return [void]
+    # @raise [ComputedModel::CyclicDependency] if the graph has a cycle
+    # @raise [ArgumentError] if the graph lacks a primary field
+    # @raise [RuntimeError] if the graph has multiple primary fields
+    # @raise [RuntimeError] if the graph has a dangling dependency (reference to an undefined field)
+    # @example
+    #   class User
+    #     computed def foo
+    #       # ...
+    #     end
+    #
+    #     # ...
+    #
+    #     verify_dependencies
+    #   end
     def verify_dependencies
       __computed_model_sorted_graph
       nil
@@ -299,14 +426,14 @@ module ComputedModel::Model
 
   # Returns dependency of the currently computing field,
   # or the toplevel dependency if called outside of computed fields.
-  # @return [Set<Symbol>, nil]
+  # @return [Set<Symbol>]
   def current_deps
     @__computed_model_stack.last.deps
   end
 
   # Returns subdependencies passed to the currently computing field,
   # or nil if called outside of computed fields.
-  # @return [Hash{Symbol=>Array}, nil]
+  # @return [ComputedModel::NormalizableArray, nil]
   def current_subdeps
     @__computed_model_stack.last.subdeps
   end
