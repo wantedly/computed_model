@@ -32,12 +32,12 @@ RSpec.describe ComputedModel do
         bulk_load_and_compute(with, ids: ids)
       end
 
-      define_primary_loader :raw_user do |_subdeps, ids:, **_options|
+      define_primary_loader :raw_user do |_subfields, ids:, **_options|
         RawUser.where(id: ids).map { |raw_user| User.new(raw_user) }
       end
 
-      define_loader :books, key: -> { id } do |keys, subdeps|
-        Book.list(user_ids: keys, with: subdeps).group_by(&:author_id)
+      define_loader :books, key: -> { id } do |keys, subfields|
+        Book.list(user_ids: keys, with: subfields).group_by(&:author_id)
       end
 
       delegate_dependency :name, to: :raw_user
@@ -68,7 +68,7 @@ RSpec.describe ComputedModel do
         bulk_load_and_compute(with, user_ids: user_ids)
       end
 
-      define_primary_loader :raw_book do |_subdeps, user_ids:, **_options|
+      define_primary_loader :raw_book do |_subfields, user_ids:, **_options|
         RawBook.where(author_id: user_ids).map { |raw_book| Book.new(raw_book) }
       end
 

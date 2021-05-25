@@ -34,7 +34,7 @@ end
 
 ```ruby
 class User
-  define_loader :preference, key: -> { id } do |ids, _subdeps, **|
+  define_loader :preference, key: -> { id } do |ids, _subfields, **|
     Preference.where(user_id: ids).index_by(&:user_id)
   end
 end
@@ -53,7 +53,7 @@ class User
     @raw_user = raw_user
   end
 
-  define_primary_loader :raw_user do |_subdeps, ids:, **|
+  define_primary_loader :raw_user do |_subfields, ids:, **|
     # User#initialize 内で @raw_user をセットする必要がある
     RawUser.where(id: ids).map { |u| User.new(u) }
   end
@@ -118,8 +118,8 @@ end
 
 ```ruby
 class User
-  define_loader :profile, key: -> { id } do |ids, subdeps, **|
-    Profile.preload(subdeps).where(user_id: ids).index_by(&:user_id)
+  define_loader :profile, key: -> { id } do |ids, subfields, **|
+    Profile.preload(subfields).where(user_id: ids).index_by(&:user_id)
   end
 
   # profileのローダーに [:contact_phones] が渡される
@@ -151,7 +151,7 @@ class User
     bulk_load_and_compute(with, ids: nil, emails: emails)
   end
 
-  define_primary_loader :raw_user do |_subdeps, ids:, emails:, **|
+  define_primary_loader :raw_user do |_subfields, ids:, emails:, **|
     s = User.all
     s = s.where(id: ids) if ids
     s = s.where(email: emails) if emails
@@ -171,11 +171,11 @@ class User
     @current_user_id = current_user_id
   end
 
-  define_primary_loader :raw_user do |_subdeps, current_user_id:, ids:, **|
+  define_primary_loader :raw_user do |_subfields, current_user_id:, ids:, **|
     # ...
   end
 
-  define_loader :profile, key: -> { id } do |ids, _subdeps, current_user_id:, **|
+  define_loader :profile, key: -> { id } do |ids, _subfields, current_user_id:, **|
     # ...
   end
 end
@@ -190,14 +190,15 @@ end
 受け取った下位フィールドセレクタの内容にもとづいて、条件つき依存関係を定義することができます。
 
 ```ruby
+
 class User
   dependency(
     :blog_articles,
     # image 下位フィールドセレクタがあるときのみ image_permissions フィールド を読み込む
-    image_permissions: -> (subdeps) { subdeps.normalized[:image].any? }
+    image_permissions: -> (subfields) { subfields.normalized[:image].any? }
   )
   computed def filtered_blog_articles
-    if current_subdeps.normalized[:image].any?
+    if current_subfields.normalized[:image].any?
       # ...
     end
     # ...
@@ -210,12 +211,13 @@ end
 下位フィールドセレクタを別のフィールドにそのまま流すことができます。
 
 ```ruby
+
 class User
   dependency(
-    blog_articles: -> (subdeps) { subdeps }
+    blog_articles: -> (subfields) { subfields }
   )
   computed def filtered_blog_articles
-    if current_subdeps.normalized[:image].any?
+    if current_subfields.normalized[:image].any?
       # ...
     end
     # ...
@@ -232,10 +234,10 @@ class User
   dependency(
     # blog_articles を必ずロードするが、
     # 特に下位フィールドセレクタが blog_articles キーを持つ場合はそれを blog_articles の下位フィールドセレクタとして流す
-    blog_articles: [true, -> (subdeps) { subdeps.normalized[:blog_articles] }],
+    blog_articles: [true, -> (subfields) { subfields.normalized[:blog_articles] }],
     # wiki_articles を必ずロードするが、
     # 特に下位フィールドセレクタが wiki_articles キーを持つ場合はそれを wiki_articles の下位フィールドセレクタとして流す
-    wiki_articles: [true, -> (subdeps) { subdeps.normalized[:wiki_articles] }]
+    wiki_articles: [true, -> (subfields) { subfields.normalized[:wiki_articles] }]
   )
   computed def articles
     (blog_articles + wiki_articles).sort_by { |article| article.created_at }.reverse
@@ -275,7 +277,7 @@ computed def display_name; ...; end
 
 下位フィールドセレクタは以下のように解釈します。
 
-- Procなど `#call` を持つオブジェクトがある場合、引数に `subdeps` を渡して実行する。
+- Procなど `#call` を持つオブジェクトがある場合、引数に `subfields` (下位フィールドセレクタの配列) を渡して実行する。
   - 配列が返ってきた場合はフラットに展開する。 (`{ foo: [-> { [:bar, :baz] }] }` → `{ foo: [:bar, :baz] }`)
   - それ以外の値が返ってきた場合はその要素で置き換える。 (`{ foo: [-> { :bar }] }` → `{ foo: [:bar] }`)
 - Procの置き換え後、真値 (nilとfalse以外の値) が1つ以上含まれているかを判定する。
@@ -286,7 +288,7 @@ computed def display_name; ...; end
 
 - `define_loader` や `define_primary_loader` のブロックに渡されるときは、下位フィールドセレクタに含まれる `nil`, `false`, `true` は
   取り除かれます。
-- いくつかの場面では `subdeps.normalize` という特別なメソッドが使えることがあります。これは下位フィールドセレクタに含まれる
+- いくつかの場面では `subfields.normalize` という特別なメソッドが使えることがあります。これは下位フィールドセレクタに含まれる
   `nil`, `false`, `true` を取り除いたあと、 `ComputedModel.normalize_dependencies` の正規化にかけたハッシュを返します。
 
 ## 継承

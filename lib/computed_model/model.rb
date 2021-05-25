@@ -26,7 +26,7 @@ require 'active_support/concern'
 #       bulk_load_and_compute(Array(with), ids: ids)
 #     end
 #
-#     define_primary_loader :raw_user do |_subdeps, ids:, **|
+#     define_primary_loader :raw_user do |_subfields, ids:, **|
 #       # In ActiveRecord:
 #       # raw_users = RawUser.where(id: ids).to_a
 #       raw_users = [
@@ -36,7 +36,7 @@ require 'active_support/concern'
 #       raw_users.map { |u| User.new(u) }
 #     end
 #
-#     define_loader :preference, key: -> { id } do |user_ids, _subdeps, **|
+#     define_loader :preference, key: -> { id } do |user_ids, _subfields, **|
 #       # In ActiveRecord:
 #       # Preference.where(user_id: user_ids).index_by(&:user_id)
 #       {
@@ -108,14 +108,14 @@ module ComputedModel::Model
     #     # Use user and user_external_resource ...
     #   end
     #
-    # @example declaring dependencies with sub-dependencies
+    # @example declaring dependencies with subfield selectors
     #   dependency user: [:user_names, :premium], user_external_resource: [:received_stars]
     #   computed def something
     #     # Use user and user_external_resource ...
     #   end
     #
     # @example declaring dynamic dependencies
-    #   dependency user: -> (subdeps) { "..." }
+    #   dependency user: -> (subfields) { "..." }
     #   computed def something
     #     # Use user ...
     #   end
@@ -179,8 +179,8 @@ module ComputedModel::Model
     # @param allow_nil [nil, Boolean] If `true`,
     #   nil receivers are ignored, and nil is returned instead.
     # @param prefix [nil, Symbol] A prefix for the delegating method name.
-    # @param include_subdeps [nil, Boolean] If `true`,
-    #   sub-dependencies are also included.
+    # @param include_subfields [nil, Boolean] If `true`,
+    #   it includes meth_name as a subfield selector.
     # @return [void]
     #
     # @example delegate name from raw_user
@@ -188,11 +188,11 @@ module ComputedModel::Model
     #
     # @example delegate name from raw_user, but expose as user_name
     #   delegate_dependency :name, to: :raw_user, prefix: :user
-    def delegate_dependency(*methods, to:, allow_nil: nil, prefix: nil, include_subdeps: nil)
+    def delegate_dependency(*methods, to:, allow_nil: nil, prefix: nil, include_subfields: nil)
       method_prefix = prefix ? "#{prefix}_" : ""
       methods.each do |meth_name|
         pmeth_name = :"#{method_prefix}#{meth_name}"
-        if include_subdeps
+        if include_subfields
           dependency to=>meth_name
         else
           dependency to
@@ -226,16 +226,16 @@ module ComputedModel::Model
     #   Typically `-> { id }`.
     # @return [void]
     # @raise [ArgumentError] if no block is given
-    # @yield [keys, subdeps, **options]
+    # @yield [keys, subfields, **options]
     # @yieldparam keys [Array] the array of keys.
-    # @yieldparam subdeps [Hash] sub-dependencies
+    # @yieldparam subfields [Array] subfield selectors
     # @yieldparam options [Hash] the batch-loading parameters.
     #   The keyword arguments to {#bulk_load_and_compute} will be passed down here as-is.
     # @yieldreturn [Hash] a hash containing field values.
     #
     # @example define a loader for ActiveRecord-based models
-    #   define_loader :user_aux_data, key: -> { id } do |user_ids, subdeps, **options|
-    #     UserAuxData.where(user_id: user_ids).preload(subdeps).group_by(&:id)
+    #   define_loader :user_aux_data, key: -> { id } do |user_ids, subfields, **options|
+    #     UserAuxData.where(user_id: user_ids).preload(subfields).group_by(&:id)
     #   end
     def define_loader(meth_name, key:, &block)
       raise ArgumentError, "No block given" unless block
@@ -246,11 +246,11 @@ module ComputedModel::Model
 
       __computed_model_graph << ComputedModel::DepGraph::Node.new(:loaded, meth_name, @__computed_model_next_dependency)
       remove_instance_variable(:@__computed_model_next_dependency) if defined?(@__computed_model_next_dependency)
-      define_singleton_method(loader_name) do |objs, subdeps, **options|
+      define_singleton_method(loader_name) do |objs, subfields, **options|
         keys = objs.map { |o| o.instance_exec(&key) }
-        subobj_by_key = block.call(keys, subdeps, **options)
+        field_values = block.call(keys, subfields, **options)
         objs.zip(keys) do |obj, key|
-          obj.send(writer_name, subobj_by_key[key])
+          obj.send(writer_name, field_values[key])
         end
       end
 
@@ -285,8 +285,8 @@ module ComputedModel::Model
     # @return [Array] an array of record objects.
     # @raise [ArgumentError] if no block is given
     # @raise [ArgumentError] if it follows a {#dependency} declaration
-    # @yield [subdeps, **options]
-    # @yieldparam subdeps [Hash] sub-dependencies
+    # @yield [subfields, **options]
+    # @yieldparam subfields [Array] subfield selectors
     # @yieldparam options [Hash] the batch-loading parameters.
     #   The keyword arguments to {#bulk_load_and_compute} will be passed down here as-is.
     # @yieldreturn [void]
@@ -300,8 +300,8 @@ module ComputedModel::Model
     #       @raw_user = raw_user
     #     end
     #
-    #     define_primary_loader :raw_user do |subdeps, **options|
-    #       raw_users = RawUser.where(id: user_ids).preload(subdeps)
+    #     define_primary_loader :raw_user do |subfields, **options|
+    #       raw_users = RawUser.where(id: user_ids).preload(subfields)
     #       # Create User instances
     #       raw_users.map { |raw_user| User.new(raw_user) }
     #     end
@@ -319,8 +319,8 @@ module ComputedModel::Model
       loader_name = :"__computed_model_enumerate_#{meth_name}"
 
       __computed_model_graph << ComputedModel::DepGraph::Node.new(:primary, meth_name, {})
-      define_singleton_method(loader_name) do |subdeps, **options|
-        block.call(subdeps, **options)
+      define_singleton_method(loader_name) do |subfields, **options|
+        block.call(subfields, **options)
       end
 
       define_method(meth_name) do
@@ -354,7 +354,7 @@ module ComputedModel::Model
         case sorted.original[node.name].type
         when :primary
           loader_name = :"__computed_model_enumerate_#{node.name}"
-          objs = send(loader_name, ComputedModel.filter_subdeps(node.subdeps), **options)
+          objs = send(loader_name, ComputedModel.filter_subfields(node.subfields), **options)
           dummy_toplevel_node = ComputedModel::Plan::Node.new(nil, plan.toplevel, nil)
           objs.each do |obj|
             obj.instance_variable_set(:@__computed_model_plan, plan)
@@ -366,7 +366,7 @@ module ComputedModel::Model
             obj.instance_variable_get(:@__computed_model_stack) << node
           end
           begin
-            send(loader_name, objs, ComputedModel.filter_subdeps(node.subdeps), **options)
+            send(loader_name, objs, ComputedModel.filter_subfields(node.subfields), **options)
           ensure
             objs.each do |obj|
               obj.instance_variable_get(:@__computed_model_stack).pop
@@ -431,11 +431,11 @@ module ComputedModel::Model
     @__computed_model_stack.last.deps
   end
 
-  # Returns subdependencies passed to the currently computing field,
+  # Returns subfield selectors passed to the currently computing field,
   # or nil if called outside of computed fields.
   # @return [ComputedModel::NormalizableArray, nil]
-  def current_subdeps
-    @__computed_model_stack.last.subdeps
+  def current_subfields
+    @__computed_model_stack.last.subfields
   end
 
   # @param name [Symbol]

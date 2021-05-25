@@ -95,7 +95,7 @@ class User
     bulk_load_and_compute(Array(with), ids: ids)
   end
 
-  define_primary_loader :raw_user do |_subdeps, ids:, **|
+  define_primary_loader :raw_user do |_subfields, ids:, **|
     # ActiveRecordの場合:
     # raw_users = RawUser.where(id: ids).to_a
     raw_users = [
@@ -105,7 +105,7 @@ class User
     raw_users.map { |u| User.new(u) }
   end
 
-  define_loader :preference, key: -> { id } do |user_ids, _subdeps, **|
+  define_loader :preference, key: -> { id } do |user_ids, _subfields, **|
     # ActiveRecordの場合:
     # Preference.where(user_id: user_ids).index_by(&:user_id)
     {

@@ -46,7 +46,7 @@ module ComputedModel
   #   # => { foo: [true], bar: [true, :baz] }
   #
   # @example
-  #   ComputedModel.normalize_dependencies(foo: -> (subdeps) { true })
+  #   ComputedModel.normalize_dependencies(foo: -> (subfields) { true })
   #   # => { foo: [#<Proc:...>] }
   def self.normalize_dependencies(deps)
     normalized = {}
@@ -75,20 +75,20 @@ module ComputedModel
   # {ComputedModel::Model::ClassMethods#define_primary_loader}, and
   # {ComputedModel::NormalizableArray#normalized} will internally use this function.
   #
-  # @param subdeps [Array] subfield selector list
+  # @param subfields [Array] subfield selector list
   # @return [Array] the filtered one
   # @example
-  #   ComputedModel.filter_subdeps([false, {}, true, nil, { foo: :bar }])
+  #   ComputedModel.filter_subfields([false, {}, true, nil, { foo: :bar }])
   #   # => [{}, { foo: :bar }]
-  def self.filter_subdeps(subdeps)
-    subdeps.select { |x| x && x != true }
+  def self.filter_subfields(subfields)
+    subfields.select { |x| x && x != true }
   end
 
   # Convenience class to easily access normalized version of dependencies.
   #
   # You don't need to directly use it.
   #
-  # - {ComputedModel::Model#current_subdeps} returns NormalizableArray.
+  # - {ComputedModel::Model#current_subfields} returns NormalizableArray.
   # - Procs passed to {ComputedModel::Model::ClassMethods#dependency} will receive NormalizeArray.
   class NormalizableArray < Array
     # Returns the normalized hash of the dependencies.
@@ -96,7 +96,7 @@ module ComputedModel
     # @raise [RuntimeError] if the list isn't valid as a dependency list.
     #   See {ComputedModel.normalize_dependencies} for details.
     def normalized
-      @normalized ||= ComputedModel.normalize_dependencies(ComputedModel.filter_subdeps(self))
+      @normalized ||= ComputedModel.normalize_dependencies(ComputedModel.filter_subfields(self))
     end
   end
 end

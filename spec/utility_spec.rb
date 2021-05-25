@@ -12,8 +12,8 @@ RSpec.describe ComputedModel::Model do
   let(:raw_user_ids) { [raw_user1.id, raw_user2.id] }
 
   let(:user_class) do
-    record_user_subdeps = -> (subdeps) { @user_subdeps = subdeps }
-    record_user_extra_subdeps = -> (subdeps) { @user_extra_subdeps = subdeps }
+    record_user_subfields = -> (subfields) { @user_subfields = subfields }
+    record_user_extra_subfields = -> (subfields) { @user_extra_subfields = subfields }
     Class.new do
       def self.name; 'User'; end
       def self.to_s; 'User'; end
@@ -31,13 +31,13 @@ RSpec.describe ComputedModel::Model do
         bulk_load_and_compute(with, ids: ids)
       end
 
-      define_primary_loader :raw_user do |subdeps, ids:, **_options|
-        record_user_subdeps.call(subdeps)
+      define_primary_loader :raw_user do |subfields, ids:, **_options|
+        record_user_subfields.call(subfields)
         RawUser.where(id: ids).map { |raw_user| self.new(raw_user) }
       end
 
-      define_loader :raw_user_extra, key: -> { id } do |keys, subdeps|
-        record_user_extra_subdeps.call(subdeps)
+      define_loader :raw_user_extra, key: -> { id } do |keys, subfields|
+        record_user_extra_subfields.call(subfields)
         RawUserExtra.where(id: keys).index_by(&:id)
       end
     end
@@ -98,29 +98,29 @@ RSpec.describe ComputedModel::Model do
       end
     end
 
-    describe 'without include_subdeps' do
+    describe 'without include_subfields' do
       before do
         user_class.module_eval do
           delegate_dependency :name, to: :raw_user
         end
       end
 
-      it "doesn't generate subdeps" do
+      it "doesn't generate subfields" do
         User.list(raw_user_ids, with: [:name])
-        expect(@user_subdeps).to eq([])
+        expect(@user_subfields).to eq([])
       end
     end
 
-    describe 'without include_subdeps' do
+    describe 'without include_subfields' do
       before do
         user_class.module_eval do
-          delegate_dependency :name, to: :raw_user, include_subdeps: true
+          delegate_dependency :name, to: :raw_user, include_subfields: true
         end
       end
 
-      it 'generates subdeps' do
+      it 'generates subfields' do
         User.list(raw_user_ids, with: [:name])
-        expect(@user_subdeps).to eq([:name])
+        expect(@user_subfields).to eq([:name])
       end
     end
   end

@@ -126,6 +126,28 @@ However, in computed_model 0.3,
 it always leads to `ComputedModel::ForbiddenDependency`.
 
 
+## Major breaking: `subdeps` are now called `subfields`
+
+Before:
+
+```ruby
+class User
+  delegate_dependency :name, to: :raw_user, include_subdeps: true
+end
+```
+
+After:
+
+```ruby
+class User
+  delegate_dependency :name, to: :raw_user, include_subfields: true
+end
+```
+
+We also recommend renaming block parameters named `subdeps` as `subfields`,
+although not strictly necessary.
+
+
 ## Minor breaking: `computed_model_error` has been removed
 
 It was useful in computed_model 0.1 but no longer needed in computed_model 0.2.
