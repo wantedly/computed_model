@@ -128,6 +128,8 @@ it always leads to `ComputedModel::ForbiddenDependency`.
 
 ## Major breaking: `subdeps` are now called `subfields`
 
+https://github.com/wantedly/computed_model/pull/31
+
 Before:
 
 ```ruby

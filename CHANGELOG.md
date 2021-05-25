@@ -11,6 +11,7 @@ computed_model 0.3 comes with a great number of improvements, and a bunch of bre
   - Cyclic dependency is an error even if it is unused.
   - `nil`, `true`, and `false` in subdeps will be filtered out before passed to a loader.
   - `ComputedModel.normalized_dependencies` now returns `[true]` instead of `[]` as an empty value.
+  - `include_subdeps` is now `include_subfields`
 - Notable behavioral changes
   - The order in which fields are loaded is changed.
   - `ComputedModel::Model` now uses `ActiveSupport::Concern`.
@@ -22,6 +23,7 @@ computed_model 0.3 comes with a great number of improvements, and a bunch of bre
   - Preprocess graph with topological sorting https://github.com/wantedly/computed_model/pull/24
   - Implement conditional dependencies and subdependency mapping/passthrough https://github.com/wantedly/computed_model/pull/25
   - Use `ActiveSupport::Concern` https://github.com/wantedly/computed_model/pull/26
+  - Rename subdeps as subfields https://github.com/wantedly/computed_model/pull/31
 - Added
   - `ComputedModel::Model#verify_dependencies`
   - Loader dependency https://github.com/wantedly/computed_model/pull/28
