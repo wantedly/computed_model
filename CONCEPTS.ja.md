@@ -297,12 +297,14 @@ ComputedModelで部分的にフィールドを定義したクラス (モジュ�
 
 ```ruby
 module UserLikeConcern
-  extends ActiveSupport::Concern
+  extend ActiveSupport::Concern
   include ComputedModel::Model
 
-  dependency :preference, :profile
-  computed def display_name
-    "#{preference.title} #{profile.name}"
+  included do
+    dependency :preference, :profile
+    computed def display_name
+      "#{preference.title} #{profile.name}"
+    end
   end
 end
 
