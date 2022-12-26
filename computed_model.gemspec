@@ -44,6 +44,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "activerecord", "~> 7.0"
   spec.add_development_dependency "sqlite3", "~> 1.4"
   spec.add_development_dependency "factory_bot", "~> 6.1"
-  spec.add_development_dependency "simplecov", "~> 0.21.2"
+  spec.add_development_dependency "simplecov", "~> 0.22.0"
   spec.add_development_dependency "simplecov-lcov", "~> 0.8.0"
 end
